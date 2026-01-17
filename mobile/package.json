@@ -1,0 +1,12 @@
+{
+  "name": "twin-ai-mobile",
+  "version": "1.0.0",
+  "dependencies": {
+    "react-native-contacts": "^7.0.0",
+    "react-native-call-log": "^1.0.0",
+    "react-native-sqlite-storage": "^6.0.0"
+  },
+  "devDependencies": {
+    "better-sqlite3": "^11.0.0"
+  }
+}
