@@ -119,7 +119,8 @@ CREATE TABLE IF NOT EXISTS patterns (
     evidence_count INTEGER, -- Number of supporting responses
     first_detected TIMESTAMP,
     last_updated TIMESTAMP,
-    metadata JSON -- Pattern details, conditions, etc.
+    metadata JSON, -- Pattern details, conditions, etc.
+    UNIQUE(profile_id, dimension_id, aspect_id)
 );
 
 -- Relationships: People, projects, entities

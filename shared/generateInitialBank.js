@@ -6,7 +6,9 @@ async function main() {
     initDb();
 
     // Clear old data for a fresh start in this demo
+    db.prepare("DELETE FROM answer_options").run();
     db.prepare("DELETE FROM questions").run();
+    db.prepare("DELETE FROM aspects").run();
     db.prepare("DELETE FROM dimensions").run();
 
     // Create initial profile
