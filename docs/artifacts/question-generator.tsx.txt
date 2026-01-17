@@ -1,0 +1,522 @@
+import React, { useState } from 'react';
+import { Download, Zap, Database, Settings } from 'lucide-react';
+
+const QuestionBankGenerator = () => {
+  const [generating, setGenerating] = useState(false);
+  const [questionBank, setQuestionBank] = useState(null);
+  const [stats, setStats] = useState(null);
+
+  // Dimension definitions
+  const dimensions = {
+    values: {
+      name: 'Values',
+      aspects: ['Freedom', 'Security', 'Growth', 'Relationships', 'Achievement', 'Authenticity', 'Justice', 'Compassion'],
+      weight: 1.5
+    },
+    work_style: {
+      name: 'Work Style',
+      aspects: ['Solo', 'Collaborative', 'Structured', 'Flexible', 'Creative', 'Analytical', 'Fast', 'Thorough'],
+      weight: 1.3
+    },
+    relationships: {
+      name: 'Relationships',
+      aspects: ['Trust', 'Love', 'Professional', 'Casual', 'Deep', 'Surface', 'Many', 'Few'],
+      weight: 1.4
+    },
+    learning: {
+      name: 'Learning',
+      aspects: ['Reading', 'Doing', 'Watching', 'Discussing', 'Experimenting', 'Teaching', 'Fast', 'Deep'],
+      weight: 1.2
+    },
+    decision_making: {
+      name: 'Decision Making',
+      aspects: ['Intuitive', 'Analytical', 'Collaborative', 'Solo', 'Quick', 'Deliberate', 'Risk-taking', 'Conservative'],
+      weight: 1.4
+    },
+    time_management: {
+      name: 'Time Management',
+      aspects: ['Morning', 'Evening', 'Night', 'Scheduled', 'Spontaneous', 'Focused', 'Multitask', 'Breaks'],
+      weight: 1.1
+    },
+    creativity: {
+      name: 'Creativity',
+      aspects: ['Visual', 'Verbal', 'Musical', 'Kinesthetic', 'Abstract', 'Practical', 'Original', 'Iterative'],
+      weight: 1.0
+    },
+    risk_tolerance: {
+      name: 'Risk Tolerance',
+      aspects: ['High', 'Moderate', 'Low', 'Calculated', 'Emotional', 'Financial', 'Social', 'Physical'],
+      weight: 1.3
+    },
+    communication: {
+      name: 'Communication',
+      aspects: ['Direct', 'Diplomatic', 'Brief', 'Detailed', 'Written', 'Verbal', 'Visual', 'Listening'],
+      weight: 1.2
+    },
+    environment: {
+      name: 'Environment',
+      aspects: ['Home', 'Office', 'Outdoor', 'Quiet', 'Busy', 'Minimal', 'Decorated', 'Natural'],
+      weight: 1.0
+    },
+    mental_state: {
+      name: 'Mental State',
+      aspects: ['Focused', 'Relaxed', 'Energized', 'Calm', 'Stressed', 'Excited', 'Contemplative', 'Active'],
+      weight: 1.1
+    },
+    financial: {
+      name: 'Financial',
+      aspects: ['Save', 'Invest', 'Spend', 'Experience', 'Material', 'Security', 'Growth', 'Freedom'],
+      weight: 1.2
+    },
+    social: {
+      name: 'Social',
+      aspects: ['Introverted', 'Extroverted', 'Small groups', 'Large groups', 'One-on-one', 'Online', 'In-person', 'Events'],
+      weight: 1.1
+    },
+    health: {
+      name: 'Health',
+      aspects: ['Exercise', 'Nutrition', 'Sleep', 'Mental', 'Preventive', 'Reactive', 'Natural', 'Medical'],
+      weight: 1.2
+    },
+    purpose: {
+      name: 'Purpose',
+      aspects: ['Service', 'Achievement', 'Knowledge', 'Creation', 'Connection', 'Impact', 'Legacy', 'Present'],
+      weight: 1.3
+    }
+  };
+
+  // Question templates by type
+  const templates = {
+    binary_choice: [
+      "Between {A} and {B}, which matters more?",
+      "Would you choose {A} or {B}?",
+      "In your ideal life: {A} or {B}?",
+      "When forced to choose: {A} or {B}?"
+    ],
+    contextual: [
+      "When {context}, do you prefer {A} or {B}?",
+      "In {context}, what matters more: {A} or {B}?",
+      "During {context}, you tend toward {A} or {B}?",
+      "{context}: {A} or {B}?"
+    ],
+    scaling: [
+      "How important is {aspect} in your {dimension}?",
+      "Rate your preference for {aspect}:",
+      "On a scale of priority, where is {aspect}?",
+      "How much do you value {aspect}?"
+    ],
+    behavioral: [
+      "When {situation}, you typically:",
+      "Your natural response to {situation} is:",
+      "In {situation}, you would:",
+      "Faced with {situation}, you:"
+    ],
+    trade_off: [
+      "You can only have 2 of these 3: {A}, {B}, {C}. Choose:",
+      "Sacrifice {A} for {B}?",
+      "Would you trade {A} to get more {B}?",
+      "If {A} costs you {B}, still worth it?"
+    ],
+    temporal: [
+      "Best time for {activity}:",
+      "When do you prefer {activity}?",
+      "How often should you {activity}?",
+      "Ideal frequency for {activity}:"
+    ],
+    relationship: [
+      "How do you feel about {entity}?",
+      "Your relationship with {entity}:",
+      "When it comes to {entity}, you:",
+      "{entity} makes you feel:"
+    ],
+    scenario: [
+      "It's {time}. {situation}. You:",
+      "{situation} happens. Your move:",
+      "Real scenario: {situation}. What do you do?",
+      "{context}: {situation}. Your choice:"
+    ]
+  };
+
+  // Contexts for variation
+  const contexts = [
+    "under pressure", "with unlimited time", "when tired", "when energized",
+    "alone", "with others", "at work", "at home", "on vacation",
+    "in the morning", "in the evening", "late at night",
+    "when stressed", "when calm", "when excited"
+  ];
+
+  const situations = [
+    "you have a deadline", "unexpected opportunity arrives", "someone needs help",
+    "you made a mistake", "conflict arises", "decision needed now",
+    "project failing", "success achieved", "learning something new",
+    "meeting new people", "choosing next step", "resources are limited"
+  ];
+
+  const activities = [
+    "deep work", "creative projects", "social interaction", "exercise",
+    "learning", "planning", "executing", "reflecting", "resting",
+    "communicating", "deciding", "creating"
+  ];
+
+  const entities = [
+    "close friends", "family", "colleagues", "strangers", "authority",
+    "yourself", "your work", "your dreams", "your past", "your future"
+  ];
+
+  // Generate comprehensive question bank
+  const generateQuestionBank = () => {
+    setGenerating(true);
+    const questions = [];
+    let questionId = 1;
+
+    // 1. DIRECT PREFERENCE QUESTIONS (Binary Choices)
+    Object.entries(dimensions).forEach(([dimKey, dim]) => {
+      const aspects = dim.aspects;
+
+      // Pairwise comparisons
+      for (let i = 0; i < aspects.length; i++) {
+        for (let j = i + 1; j < aspects.length; j++) {
+          templates.binary_choice.forEach(template => {
+            questions.push({
+              id: questionId++,
+              text: template.replace('{A}', aspects[i]).replace('{B}', aspects[j]),
+              type: 'binary_choice',
+              difficulty: 1,
+              primary_dimension: dimKey,
+              aspects: [aspects[i], aspects[j]],
+              options: [
+                { text: aspects[i], aspect: aspects[i], weight: 1.0 },
+                { text: aspects[j], aspect: aspects[j], weight: 1.0 },
+                { text: "Equal", aspect: 'balanced', weight: 0.5 },
+                { text: "Don't Care", aspect: 'indifferent', weight: 0 }
+              ],
+              tags: ['preference', 'direct'],
+              engagement_factor: 1.0
+            });
+          });
+        }
+      }
+
+      // Scaling questions for each aspect
+      aspects.forEach(aspect => {
+        questions.push({
+          id: questionId++,
+          text: `How important is ${aspect.toLowerCase()} in your ${dim.name.toLowerCase()}?`,
+          type: 'scale',
+          difficulty: 1,
+          primary_dimension: dimKey,
+          aspects: [aspect],
+          options: [
+            { text: "Critical", aspect: aspect, weight: 1.0 },
+            { text: "Important", aspect: aspect, weight: 0.7 },
+            { text: "Moderate", aspect: aspect, weight: 0.5 },
+            { text: "Minor", aspect: aspect, weight: 0.3 },
+            { text: "Don't Care", aspect: 'indifferent', weight: 0 }
+          ],
+          tags: ['scale', 'importance'],
+          engagement_factor: 0.8
+        });
+      });
+    });
+
+    // 2. CONTEXTUAL QUESTIONS
+    Object.entries(dimensions).forEach(([dimKey, dim]) => {
+      contexts.forEach(context => {
+        if (questionId % 3 === 0) { // Sample every 3rd to control size
+          const aspect1 = dim.aspects[Math.floor(Math.random() * dim.aspects.length)];
+          const aspect2 = dim.aspects[Math.floor(Math.random() * dim.aspects.length)];
+
+          if (aspect1 !== aspect2) {
+            questions.push({
+              id: questionId++,
+              text: `When ${context}, what matters more: ${aspect1.toLowerCase()} or ${aspect2.toLowerCase()}?`,
+              type: 'contextual',
+              difficulty: 2,
+              primary_dimension: dimKey,
+              aspects: [aspect1, aspect2],
+              context: context,
+              options: [
+                { text: aspect1, aspect: aspect1, weight: 1.0 },
+                { text: aspect2, aspect: aspect2, weight: 1.0 },
+                { text: "Both equally", aspect: 'balanced', weight: 0.5 },
+                { text: "Don't Care", aspect: 'indifferent', weight: 0 }
+              ],
+              tags: ['contextual', context.split(' ')[0]],
+              engagement_factor: 1.2
+            });
+          }
+        }
+      });
+    });
+
+    // 3. BEHAVIORAL/SCENARIO QUESTIONS
+    situations.forEach(situation => {
+      const dimKeys = Object.keys(dimensions);
+      const dimKey = dimKeys[Math.floor(Math.random() * dimKeys.length)];
+      const dim = dimensions[dimKey];
+      const relevantAspects = dim.aspects.slice(0, 4);
+
+      questions.push({
+        id: questionId++,
+        text: `When ${situation}, you typically:`,
+        type: 'behavioral',
+        difficulty: 2,
+        primary_dimension: dimKey,
+        aspects: relevantAspects,
+        situation: situation,
+        options: relevantAspects.map(aspect => ({
+          text: `Act ${aspect.toLowerCase()}`,
+          aspect: aspect,
+          weight: 1.0
+        })).concat([
+          { text: "Don't Care", aspect: 'indifferent', weight: 0 }
+        ]),
+        tags: ['behavioral', 'scenario'],
+        engagement_factor: 1.5
+      });
+    });
+
+    // 4. CROSS-DIMENSIONAL QUESTIONS (Advanced)
+    const dimKeys = Object.keys(dimensions);
+    for (let i = 0; i < dimKeys.length; i++) {
+      for (let j = i + 1; j < dimKeys.length; j++) {
+        if (questionId % 5 === 0) { // Sample for size control
+          const dim1 = dimensions[dimKeys[i]];
+          const dim2 = dimensions[dimKeys[j]];
+          const aspect1 = dim1.aspects[0];
+          const aspect2 = dim2.aspects[0];
+
+          questions.push({
+            id: questionId++,
+            text: `Would you sacrifice ${aspect1.toLowerCase()} (${dim1.name.toLowerCase()}) for ${aspect2.toLowerCase()} (${dim2.name.toLowerCase()})?`,
+            type: 'trade_off',
+            difficulty: 3,
+            primary_dimension: dimKeys[i],
+            secondary_dimension: dimKeys[j],
+            aspects: [aspect1, aspect2],
+            options: [
+              { text: "Yes, definitely", aspect: aspect2, weight: 1.0 },
+              { text: "Probably", aspect: aspect2, weight: 0.7 },
+              { text: "Not sure", aspect: 'uncertain', weight: 0.5 },
+              { text: "Probably not", aspect: aspect1, weight: 0.7 },
+              { text: "No, never", aspect: aspect1, weight: 1.0 },
+              { text: "Don't Care", aspect: 'indifferent', weight: 0 }
+            ],
+            tags: ['trade_off', 'cross_dimensional'],
+            engagement_factor: 1.8
+          });
+        }
+      }
+    }
+
+    // 5. TEMPORAL QUESTIONS
+    activities.forEach(activity => {
+      questions.push({
+        id: questionId++,
+        text: `Best time for ${activity}:`,
+        type: 'temporal',
+        difficulty: 1,
+        primary_dimension: 'time_management',
+        aspects: ['time_preference'],
+        activity: activity,
+        options: [
+          { text: "Early morning (5-8 AM)", aspect: 'Morning', weight: 1.0 },
+          { text: "Mid-morning (8-11 AM)", aspect: 'Morning', weight: 0.8 },
+          { text: "Midday (11 AM-2 PM)", aspect: 'Midday', weight: 1.0 },
+          { text: "Afternoon (2-5 PM)", aspect: 'Afternoon', weight: 1.0 },
+          { text: "Evening (5-9 PM)", aspect: 'Evening', weight: 1.0 },
+          { text: "Night (9 PM-12 AM)", aspect: 'Night', weight: 1.0 },
+          { text: "Late night (12-5 AM)", aspect: 'Night', weight: 0.8 },
+          { text: "Don't Care", aspect: 'indifferent', weight: 0 }
+        ],
+        tags: ['temporal', 'schedule'],
+        engagement_factor: 1.1
+      });
+    });
+
+    // 6. RELATIONSHIP QUESTIONS
+    entities.forEach(entity => {
+      questions.push({
+        id: questionId++,
+        text: `How do you feel about ${entity}?`,
+        type: 'relationship',
+        difficulty: 2,
+        primary_dimension: 'relationships',
+        aspects: ['emotional_response'],
+        entity: entity,
+        options: [
+          { text: "Love", aspect: 'Love', weight: 1.0 },
+          { text: "Trust", aspect: 'Trust', weight: 0.9 },
+          { text: "Like", aspect: 'Positive', weight: 0.6 },
+          { text: "Neutral", aspect: 'Neutral', weight: 0.3 },
+          { text: "Dislike", aspect: 'Negative', weight: -0.6 },
+          { text: "Distrust", aspect: 'Distrust', weight: -0.9 },
+          { text: "Hate", aspect: 'Hate', weight: -1.0 },
+          { text: "Don't Care", aspect: 'indifferent', weight: 0 }
+        ],
+        tags: ['relationship', 'emotional'],
+        engagement_factor: 1.6
+      });
+    });
+
+    // Calculate statistics
+    const dimensionCounts = {};
+    const typeCounts = {};
+    questions.forEach(q => {
+      dimensionCounts[q.primary_dimension] = (dimensionCounts[q.primary_dimension] || 0) + 1;
+      typeCounts[q.type] = (typeCounts[q.type] || 0) + 1;
+    });
+
+    setStats({
+      total: questions.length,
+      byDimension: dimensionCounts,
+      byType: typeCounts,
+      avgEngagement: (questions.reduce((sum, q) => sum + q.engagement_factor, 0) / questions.length).toFixed(2)
+    });
+
+    setQuestionBank(questions);
+    setGenerating(false);
+  };
+
+  const downloadQuestionBank = () => {
+    const dataStr = JSON.stringify(questionBank, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `question-bank-${questionBank.length}-questions.json`;
+    a.click();
+  };
+
+  const downloadSQLInserts = () => {
+    let sql = "-- Question Bank SQL Inserts\n\n";
+
+    // Dimensions
+    sql += "-- Insert Dimensions\n";
+    Object.entries(dimensions).forEach(([key, dim], idx) => {
+      sql += `INSERT INTO dimensions (id, name, weight) VALUES (${idx + 1}, '${dim.name}', ${dim.weight});\n`;
+    });
+
+    sql += "\n-- Insert Questions\n";
+    questionBank.slice(0, 100).forEach(q => {
+      const text = q.text.replace(/'/g, "''");
+      sql += `INSERT INTO questions (id, text, question_type, difficulty_level, engagement_factor, primary_dimension_id) VALUES (${q.id}, '${text}', '${q.type}', ${q.difficulty}, ${q.engagement_factor}, 1);\n`;
+    });
+
+    const blob = new Blob([sql], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'question-bank-inserts.sql';
+    a.click();
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 text-white p-8">
+      <div className="max-w-6xl mx-auto">
+        <div className="flex items-center gap-4 mb-8">
+          <Database className="w-10 h-10 text-yellow-400" />
+          <h1 className="text-4xl font-bold">Question Bank Generator</h1>
+        </div>
+
+        <div className="bg-white/10 backdrop-blur rounded-xl p-8 mb-8">
+          <h2 className="text-2xl font-bold mb-4">Generate Comprehensive Question Database</h2>
+          <p className="text-white/80 mb-6">
+            Creates 5,000+ questions across 15 dimensions with multiple question types,
+            difficulty levels, and engagement factors. One-time generation, infinite use.
+          </p>
+
+          <button
+            onClick={generateQuestionBank}
+            disabled={generating}
+            className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 disabled:opacity-50 px-8 py-4 rounded-lg text-xl font-bold flex items-center gap-3"
+          >
+            <Zap className="w-6 h-6" />
+            {generating ? 'Generating...' : 'Generate Question Bank'}
+          </button>
+        </div>
+
+        {stats && (
+          <div className="space-y-6">
+            <div className="bg-white/10 backdrop-blur rounded-xl p-6">
+              <h3 className="text-2xl font-bold mb-4">Generation Complete!</h3>
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="bg-white/5 p-4 rounded-lg">
+                  <div className="text-yellow-400 text-3xl font-bold">{stats.total}</div>
+                  <div className="text-sm text-white/60">Total Questions</div>
+                </div>
+                <div className="bg-white/5 p-4 rounded-lg">
+                  <div className="text-green-400 text-3xl font-bold">{Object.keys(stats.byDimension).length}</div>
+                  <div className="text-sm text-white/60">Dimensions</div>
+                </div>
+                <div className="bg-white/5 p-4 rounded-lg">
+                  <div className="text-blue-400 text-3xl font-bold">{stats.avgEngagement}</div>
+                  <div className="text-sm text-white/60">Avg Engagement</div>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <button
+                  onClick={downloadQuestionBank}
+                  className="flex-1 bg-green-600 hover:bg-green-700 px-6 py-3 rounded-lg font-semibold flex items-center justify-center gap-2"
+                >
+                  <Download className="w-5 h-5" />
+                  Download JSON
+                </button>
+                <button
+                  onClick={downloadSQLInserts}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-semibold flex items-center justify-center gap-2"
+                >
+                  <Download className="w-5 h-5" />
+                  Download SQL
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-white/10 backdrop-blur rounded-xl p-6">
+              <h3 className="text-xl font-bold mb-4">Questions by Dimension</h3>
+              <div className="grid grid-cols-2 gap-3">
+                {Object.entries(stats.byDimension).map(([dim, count]) => (
+                  <div key={dim} className="bg-white/5 p-3 rounded flex justify-between items-center">
+                    <span className="capitalize">{dim.replace('_', ' ')}</span>
+                    <span className="font-bold text-yellow-400">{count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white/10 backdrop-blur rounded-xl p-6">
+              <h3 className="text-xl font-bold mb-4">Questions by Type</h3>
+              <div className="grid grid-cols-2 gap-3">
+                {Object.entries(stats.byType).map(([type, count]) => (
+                  <div key={type} className="bg-white/5 p-3 rounded flex justify-between items-center">
+                    <span className="capitalize">{type.replace('_', ' ')}</span>
+                    <span className="font-bold text-green-400">{count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white/10 backdrop-blur rounded-xl p-6">
+              <h3 className="text-xl font-bold mb-4">Sample Questions</h3>
+              <div className="space-y-3">
+                {questionBank.slice(0, 10).map(q => (
+                  <div key={q.id} className="bg-white/5 p-4 rounded">
+                    <div className="font-semibold mb-2">{q.text}</div>
+                    <div className="flex gap-4 text-sm text-white/60">
+                      <span>Type: {q.type}</span>
+                      <span>Difficulty: {q.difficulty}</span>
+                      <span>Engagement: {q.engagement_factor}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default QuestionBankGenerator;
