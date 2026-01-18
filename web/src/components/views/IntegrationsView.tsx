@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Shield, Users, Calendar, FileText, Phone, Lock, Database, Wifi, RefreshCw, Link2, Unlock, Check
 } from 'lucide-react';
 import { Toast } from '../common/Toast';
+import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
+import { env } from '../../config/env.config';
 
 const IntegrationCard = ({ integration, status, onConnect, onSync, isSyncing }: any) => {
   const Icon = integration.icon;
@@ -107,6 +110,7 @@ const IntegrationCard = ({ integration, status, onConnect, onSync, isSyncing }: 
 };
 
 export const IntegrationsView: React.FC = () => {
+  const { user } = useAuth();
   const [integrations, setIntegrations] = useState<any>({
     contacts: { connected: false, lastSync: null, count: 0, status: 'disconnected' },
     calendar: { connected: false, lastSync: null, count: 0, status: 'disconnected' },
@@ -117,33 +121,116 @@ export const IntegrationsView: React.FC = () => {
   const [toast, setToast] = useState<any>(null);
   const [syncingKey, setSyncingKey] = useState<string | null>(null);
 
-  const handleConnect = (key: string) => {
-    if (integrations[key].connected) {
-      setIntegrations((prev: any) => ({
-        ...prev,
-        [key]: { connected: false, lastSync: null, count: 0, status: 'disconnected' }
-      }));
-      setToast({ type: 'info', message: `${key} disconnected successfully` });
-    } else {
-      setSyncingKey(key);
-      setIntegrations((prev: any) => ({
-        ...prev,
-        [key]: { ...prev[key], status: 'connecting' }
-      }));
+  const fetchConnectionStatus = useCallback(async () => {
+    if (!user) return;
 
-      setTimeout(() => {
+    try {
+      const { data, error } = await supabase
+        .from('integration_tokens')
+        .select('*')
+        .eq('profile_id', user.id);
+
+      if (error) throw error;
+
+      const newStatus = { ...integrations };
+
+      // Reset all to disconnected first
+      Object.keys(newStatus).forEach(key => {
+        newStatus[key] = { ...newStatus[key], connected: false, status: 'disconnected' };
+      });
+
+      data?.forEach((token: any) => {
+        let key = '';
+        if (token.integration_type === 'google_calendar') key = 'calendar';
+        if (token.integration_type === 'google_drive') key = 'drive';
+
+        if (key && newStatus[key]) {
+          newStatus[key] = {
+            ...newStatus[key],
+            connected: true,
+            lastSync: token.last_used_at || token.updated_at,
+            status: 'connected'
+          };
+        }
+      });
+
+      setIntegrations(newStatus);
+    } catch (err) {
+      console.error('Failed to fetch integration status', err);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchConnectionStatus();
+
+    // Check for success URL parameter
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('success') === 'true') {
+      setToast({ type: 'success', message: 'Integration connected successfully!' });
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [fetchConnectionStatus]);
+
+  const handleConnect = async (key: string) => {
+    if (integrations[key].connected) {
+      // Disconnect logic
+      try {
+        const type = key === 'calendar' ? 'google_calendar' :
+                     key === 'drive' ? 'google_drive' : key;
+
+        await supabase
+          .from('integration_tokens')
+          .delete()
+          .eq('profile_id', user?.id)
+          .eq('integration_type', type);
+
+        await fetchConnectionStatus();
+        setToast({ type: 'info', message: `${key} disconnected successfully` });
+      } catch (err) {
+        setToast({ type: 'error', message: `Failed to disconnect ${key}` });
+      }
+    } else {
+      if (key === 'calendar' || key === 'drive') {
+        // Real Google OAuth flow
+        const rootUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
+        const options = {
+          redirect_uri: import.meta.env.VITE_GOOGLE_REDIRECT_URI || `${window.location.origin}/api/google-callback`,
+          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
+          access_type: 'offline',
+          response_type: 'code',
+          prompt: 'consent',
+          scope: [
+            'https://www.googleapis.com/auth/calendar.readonly',
+            'https://www.googleapis.com/auth/userinfo.email',
+          ].join(' '),
+          state: user?.id || '', // Pass profile ID in state
+        };
+
+        const qs = new URLSearchParams(options);
+        window.location.href = `${rootUrl}?${qs.toString()}`;
+      } else {
+        // Mock for others
+        setSyncingKey(key);
         setIntegrations((prev: any) => ({
           ...prev,
-          [key]: {
-            connected: true,
-            lastSync: new Date().toISOString(),
-            count: Math.floor(Math.random() * 150) + 50,
-            status: 'connected'
-          }
+          [key]: { ...prev[key], status: 'connecting' }
         }));
-        setSyncingKey(null);
-        setToast({ type: 'success', message: `${key} connected successfully!` });
-      }, 2000);
+
+        setTimeout(() => {
+          setIntegrations((prev: any) => ({
+            ...prev,
+            [key]: {
+              connected: true,
+              lastSync: new Date().toISOString(),
+              count: Math.floor(Math.random() * 150) + 50,
+              status: 'connected'
+            }
+          }));
+          setSyncingKey(null);
+          setToast({ type: 'success', message: `${key} connected successfully!` });
+        }, 2000);
+      }
     }
   };
 
