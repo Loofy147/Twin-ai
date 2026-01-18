@@ -56,7 +56,9 @@ Uses the PPO (Proximal Policy Optimization) algorithm from `stable-baselines3` t
 from shared.rl.digital_twin_rl import DigitalTwinTrainer
 import sqlite3
 
+# Initialize trainer for a specific authenticated user
 db = sqlite3.connect('personal_learning.db')
-trainer = DigitalTwinTrainer(db, profile_id=1)
+user_uuid = "550e8400-e29b-41d4-a716-446655440000"
+trainer = DigitalTwinTrainer(db, profile_id=user_uuid)
 agent = trainer.train(total_timesteps=100000)
 ```

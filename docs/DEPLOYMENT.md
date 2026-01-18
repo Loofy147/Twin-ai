@@ -2,24 +2,33 @@
 
 This guide covers how to deploy the Twin-ai web application and database to production environments.
 
-## Database (Supabase)
+## Database & Backend (Supabase)
 
-The web application uses Supabase for cloud data storage.
+The web application uses Supabase for cloud data storage, authentication, and background logic.
 
 1.  **Create a Supabase Project**: Go to [supabase.com](https://supabase.com) and create a new project.
-2.  **Push Schema**:
+2.  **Authentication Setup**:
+    *   Enable Email/Password provider.
+    *   Configure Redirect URLs for OAuth providers (e.g., `https://your-app.vercel.app`).
+3.  **Push Schema & RLS**:
     Ensure you have the Supabase CLI installed and logged in.
     ```bash
     cd web
     npx supabase link --project-ref your-project-ref
-    npm run db:migrate
+    npx supabase db push
     ```
-3.  **Seed Data**:
+4.  **Deploy Edge Functions**:
+    Deploy the synchronization and OAuth callback functions.
+    ```bash
+    npx supabase functions deploy google-oauth-callback
+    npx supabase functions deploy sync-integrations
+    ```
+5.  **Seed Data**:
     Populate the cloud database with the initial question bank.
     ```bash
     cd web
-    # Ensure .env has VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
-    npm run db:seed
+    # Ensure .env has VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY
+    pnpm run db:seed
     ```
 
 ## Web Application (Vercel)
@@ -30,13 +39,20 @@ The web application is built with Vite and can be easily deployed to Vercel.
 2.  **Configure Project**:
     *   **Framework Preset**: Vite
     *   **Root Directory**: `web`
-    *   **Build Command**: `npm run build`
+    *   **Build Command**: `pnpm run build`
     *   **Output Directory**: `dist`
 3.  **Environment Variables**:
     Add the following environment variables in the Vercel dashboard:
     *   `VITE_SUPABASE_URL`: Your Supabase Project URL.
     *   `VITE_SUPABASE_ANON_KEY`: Your Supabase Anonymous Key.
-4.  **Deploy**: Vercel will automatically build and deploy the application.
+    *   `VITE_GOOGLE_CLIENT_ID`: Your Google OAuth Client ID.
+4.  **Security Configuration**:
+    The project includes a `web/vercel.json` which configures:
+    *   SPA routing (rewriting all requests to `/index.html`).
+    *   Strict Content Security Policy (CSP).
+    *   Strict-Transport-Security (HSTS).
+    *   X-Content-Type-Options.
+5.  **Deploy**: Vercel will automatically build and deploy the application.
 
 ## Mobile Application
 

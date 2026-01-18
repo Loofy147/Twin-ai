@@ -2,7 +2,7 @@
 
 ## 1. Adaptive Question Selection
 
-The selection engine (`shared/AdaptiveSelectionAlgorithm.js`) uses a multi-factor scoring system to choose the best questions for the user.
+The selection engine (`shared/AdaptiveSelectionAlgorithm.js`) and the frontend `useQuestions` hook work together to provide a paginated, filtered, and adaptive question stream.
 
 ### Scoring Factors:
 *   **Coverage (40%)**: Prioritizes dimensions with the fewest responses to ensure a balanced profile.
@@ -10,6 +10,11 @@ The selection engine (`shared/AdaptiveSelectionAlgorithm.js`) uses a multi-facto
 *   **Difficulty Progression (20%)**: Increases the target difficulty level as the user answers more questions (e.g., Level 1 for 0-20 answers, Level 2 for 21-40, etc.).
 *   **Engagement Factor (15%)**: Favors questions with higher inherent engagement ratings.
 *   **Randomness (10%)**: Adds variability to prevent the question flow from feeling too predictable.
+
+### Pagination & Resilience:
+*   **Incremental Loading**: Questions are fetched in batches (default: 10) to optimize browser performance and reduce database load.
+*   **Server-Side Filtering**: Dimension filtering and answered-question exclusion are performed at the database level for maximum efficiency.
+*   **Circuit Breaker Logic**: The data layer implements a circuit breaker that trips after 5 consecutive failures, preventing system-wide crashes during transient API outages.
 
 ## 2. Pattern Detection
 
