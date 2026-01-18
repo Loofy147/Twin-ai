@@ -1,56 +1,87 @@
 import React, { useState } from 'react';
+import { Navigation } from './components/common/Navigation';
+import { HomeView } from './components/views/HomeView';
+import { validateEmail, validateRequired } from './utils/validation';
+import { QuestionsView } from './components/views/QuestionsView';
+import { InsightsView } from './components/views/InsightsView';
+import { AnalyticsView } from './components/views/AnalyticsView';
+import { IntegrationsView } from './components/views/IntegrationsView';
 import DigitalTwinSimulator from './components/DigitalTwinDemo';
-import IntegrationManager from './components/IntegrationManager';
-import QuestionAnswering from './components/QuestionAnswering';
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'demo' | 'integrations' | 'questions'>('demo');
+  const [currentView, setCurrentView] = useState('home');
+
+  const renderView = () => {
+    switch(currentView) {
+      case 'home': return <HomeView setCurrentView={setCurrentView} />;
+      case 'questions': return <QuestionsView />;
+      case 'insights': return <InsightsView />;
+      case 'analytics': return <AnalyticsView />;
+      case 'integrations': return <IntegrationsView />;
+      case 'twin': return <DigitalTwinSimulator />;
+      default: return <HomeView setCurrentView={setCurrentView} />;
+    }
+  };
+
+  const [email, setEmail] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [subscribed, setSubscribed] = useState(false);
+
+  const handleSubscribe = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateRequired(email)) {
+      setEmailError('Email is required');
+      return;
+    }
+    if (!validateEmail(email)) {
+      setEmailError('Please enter a valid email');
+      return;
+    }
+    setEmailError('');
+    setSubscribed(true);
+    setTimeout(() => setSubscribed(false), 3000);
+    setEmail('');
+  };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white font-sans">
-      <nav className="bg-slate-800 border-b border-slate-700 p-4">
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <div className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600">
-            Twin-AI
+    <div className="min-h-screen bg-slate-950 text-white overflow-x-hidden font-sans">
+      <Navigation currentView={currentView} setCurrentView={setCurrentView} />
+      <main>
+        {renderView()}
+      </main>
+
+      <footer className="bg-slate-900 border-t border-white/5 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+            <div>
+              <h3 className="text-xl font-bold mb-2">Stay Updated</h3>
+              <p className="text-slate-400">Get the latest insights from your Digital Twin development.</p>
+            </div>
+            <form onSubmit={handleSubscribe} className="relative">
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  className={`flex-1 bg-slate-800 border ${emailError ? 'border-red-500' : 'border-white/10'} rounded-lg px-4 py-2 outline-none focus:border-purple-500 transition-colors`}
+                />
+                <button
+                  type="submit"
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-2 rounded-lg font-medium hover:opacity-90 transition-opacity"
+                >
+                  {subscribed ? 'Subscribed!' : 'Subscribe'}
+                </button>
+              </div>
+              {emailError && <p className="absolute -bottom-6 left-0 text-xs text-red-500">{emailError}</p>}
+            </form>
           </div>
-          <div className="flex gap-6">
-            <button
-              onClick={() => setActiveTab('demo')}
-              className={`pb-1 border-b-2 transition-all ${activeTab === 'demo' ? 'border-blue-500 text-white' : 'border-transparent text-slate-400'}`}
-            >
-              RL Demo
-            </button>
-            <button
-              onClick={() => setActiveTab('integrations')}
-              className={`pb-1 border-b-2 transition-all ${activeTab === 'integrations' ? 'border-blue-500 text-white' : 'border-transparent text-slate-400'}`}
-            >
-              Integrations
-            </button>
-            <button
-              onClick={() => setActiveTab('questions')}
-              className={`pb-1 border-b-2 transition-all ${activeTab === 'questions' ? 'border-blue-500 text-white' : 'border-transparent text-slate-400'}`}
-            >
-              Questions
-            </button>
+          <div className="mt-12 pt-8 border-t border-white/5 text-center text-slate-500 text-sm">
+            © 2024 Twin-AI. All rights reserved.
           </div>
         </div>
-      </nav>
+      </footer>
 
-      <main className="p-4">
-        {activeTab === 'demo' && <DigitalTwinSimulator />}
-        {activeTab === 'integrations' && (
-          <div className="max-w-4xl mx-auto mt-8">
-            <h2 className="text-2xl font-bold mb-6">Manage Integrations</h2>
-            <IntegrationManager />
-          </div>
-        )}
-        {activeTab === 'questions' && (
-          <div className="max-w-2xl mx-auto mt-8">
-            <h2 className="text-2xl font-bold mb-6">Answer Questions</h2>
-            <QuestionAnswering />
-          </div>
-        )}
-      </main>
     </div>
   );
 };
