@@ -226,15 +226,15 @@ class PersonalLifeEnv(gym.Env):
         Calculate reward based on alignment with learned patterns from the database.
         Includes confidence weighting.
         """
-        # Mapping action types to dimension/aspect codes
+        # Mapping action types to dimension/aspect codes (Aligned with QuestionBankGenerator.js)
         action_mapping = {
-            'call_person': 'REL_MAINTENANCE',
-            'work_on_project': 'ACHIEVEMENT',
-            'deep_work': 'GROWTH',
-            'rest': 'WELLBEING',
-            'exercise': 'HEALTH',
-            'learn': 'LEARNING',
-            'do_nothing': 'FREEDOM'
+            'call_person': 'REL_COMMUNICATION',
+            'work_on_project': 'WOR_COLLABORATIVE',
+            'deep_work': 'WOR_DEEP_WORK',
+            'rest': 'HEA_SLEEP',
+            'exercise': 'HEA_PHYSICAL_ACTIVITY',
+            'learn': 'LEA_PRACTICAL',
+            'do_nothing': 'VAL_FREEDOM'
         }
 
         aspect_code = action_mapping.get(action_type)
@@ -394,8 +394,8 @@ class DigitalTwinTrainer:
             try:
                 cursor = self.db.cursor()
                 cursor.execute("""
-                    INSERT INTO questions (text, question_type, difficulty_level, primary_dimension_id, metadata)
-                    VALUES (?, 'RL_VALIDATION', 3, (SELECT id FROM dimensions WHERE name = 'values' LIMIT 1), ?)
+                    INSERT OR IGNORE INTO questions (text, question_type, difficulty_level, primary_dimension_id, metadata)
+                    VALUES (?, 'RL_VALIDATION', 3, (SELECT id FROM dimensions WHERE name = 'Values' LIMIT 1), ?)
                 """, (full_question_text, json.dumps({
                     'scenario': info['scenario'],
                     'agent_action': action_type,

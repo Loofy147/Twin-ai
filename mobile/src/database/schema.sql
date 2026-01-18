@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS contexts (
 -- Questions: The question bank with multi-dimensional tags
 CREATE TABLE IF NOT EXISTS questions (
     id INTEGER PRIMARY KEY,
-    text TEXT NOT NULL,
+    text TEXT NOT NULL UNIQUE,
     question_type VARCHAR(50), -- 'choice', 'ranking', 'scale', 'binary'
     difficulty_level INTEGER DEFAULT 1, -- 1-5
     engagement_factor REAL DEFAULT 1.0,
@@ -119,9 +119,18 @@ CREATE TABLE IF NOT EXISTS patterns (
     evidence_count INTEGER, -- Number of supporting responses
     first_detected TIMESTAMP,
     last_updated TIMESTAMP,
-    metadata JSON, -- Pattern details, conditions, etc.
-    UNIQUE(profile_id, dimension_id, aspect_id)
+    metadata JSON -- Pattern details, conditions, etc.
 );
+
+-- Ensure uniqueness for patterns with dimensions/aspects
+CREATE UNIQUE INDEX IF NOT EXISTS idx_patterns_unique_aspect
+ON patterns(profile_id, dimension_id, aspect_id)
+WHERE dimension_id IS NOT NULL AND aspect_id IS NOT NULL;
+
+-- Ensure uniqueness for general patterns (like meeting_density)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_patterns_unique_type
+ON patterns(profile_id, pattern_type)
+WHERE dimension_id IS NULL AND aspect_id IS NULL;
 
 -- Relationships: People, projects, entities
 CREATE TABLE IF NOT EXISTS entities (
@@ -130,7 +139,8 @@ CREATE TABLE IF NOT EXISTS entities (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    metadata JSON
+    metadata JSON,
+    UNIQUE(name, entity_type)
 );
 
 -- Entity Attributes: How you feel/think about entities

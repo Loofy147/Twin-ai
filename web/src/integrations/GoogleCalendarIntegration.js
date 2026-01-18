@@ -28,7 +28,7 @@ class GoogleCalendarIntegration {
 
     for (const event of events) {
       db.prepare(`
-        INSERT INTO entities (entity_type, name, metadata)
+        INSERT OR IGNORE INTO entities (entity_type, name, metadata)
         VALUES (?, ?, ?)
       `).run('event', event.summary, JSON.stringify({
         source: 'google_calendar',
@@ -46,6 +46,12 @@ class GoogleCalendarIntegration {
     db.prepare(`
         INSERT INTO patterns (profile_id, pattern_type, confidence, strength, metadata)
         VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(profile_id, pattern_type) WHERE dimension_id IS NULL AND aspect_id IS NULL
+        DO UPDATE SET
+            confidence = excluded.confidence,
+            strength = excluded.strength,
+            metadata = excluded.metadata,
+            last_updated = CURRENT_TIMESTAMP
     `).run(profileId, 'meeting_density', 0.8, 1.0, JSON.stringify({ avgMeetingsPerDay: meetingsPerDay }));
 
     return { success: true, count: events.length };
@@ -96,7 +102,7 @@ class GoogleCalendarIntegration {
 
     for (const q of questions) {
       db.prepare(`
-        INSERT INTO questions (text, question_type, engagement_factor, primary_dimension_id, metadata)
+        INSERT OR IGNORE INTO questions (text, question_type, engagement_factor, primary_dimension_id, metadata)
         VALUES (?, ?, ?, ?, ?)
       `).run(q.text, q.question_type, q.engagement_factor, q.primary_dimension_id, q.metadata);
     }

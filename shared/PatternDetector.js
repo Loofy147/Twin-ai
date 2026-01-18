@@ -20,11 +20,12 @@ class PatternDetector {
             const confidence = Math.min(1.0, af.frequency / 10.0);
             const strength = af.total_strength / af.frequency;
 
-            // Insert or update pattern
+            // Insert or update pattern - matching the new partial unique index
             db.prepare(`
                 INSERT INTO patterns (profile_id, pattern_type, dimension_id, aspect_id, confidence, strength, evidence_count, last_updated)
                 VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                ON CONFLICT(profile_id, dimension_id, aspect_id) DO UPDATE SET
+                ON CONFLICT(profile_id, dimension_id, aspect_id) WHERE dimension_id IS NOT NULL AND aspect_id IS NOT NULL
+                DO UPDATE SET
                     confidence = excluded.confidence,
                     strength = excluded.strength,
                     evidence_count = excluded.evidence_count,
