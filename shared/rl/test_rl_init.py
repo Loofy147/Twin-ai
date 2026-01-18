@@ -16,7 +16,7 @@ def test_initialization():
     cursor = db.cursor()
 
     # Create necessary tables for DataPipeline
-    cursor.execute("CREATE TABLE entities (id INTEGER PRIMARY KEY, name TEXT, entity_type TEXT)")
+    cursor.execute("CREATE TABLE entities (id INTEGER PRIMARY KEY, name TEXT, entity_type TEXT, metadata TEXT)")
     cursor.execute("CREATE TABLE entity_attributes (id INTEGER PRIMARY KEY, entity_id INTEGER, attribute_type TEXT, value REAL)")
     cursor.execute("CREATE TABLE workflows (id INTEGER PRIMARY KEY, name TEXT, workflow_type TEXT, status TEXT, metadata TEXT)")
 
