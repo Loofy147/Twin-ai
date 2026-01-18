@@ -5,6 +5,7 @@
     "googleapis": "^140.0.0",
     "@supabase/supabase-js": "^2.43.0",
     "react": "^18.0.0",
-    "react-dom": "^18.0.0"
+    "react-dom": "^18.0.0",
+    "lucide-react": "^0.378.0"
   }
 }
