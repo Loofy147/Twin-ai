@@ -20,11 +20,21 @@
 
 ## Database Seeding
 
-To populate the initial 5,000+ question bank and dimensions:
+### Local (SQLite)
+To populate the initial 5,000+ question bank and dimensions in your local SQLite database:
 ```bash
 node shared/generateInitialBank.js
 ```
 This script initializes the SQLite database at `mobile/src/database/twin-ai.db`.
+
+### Cloud (Supabase)
+To seed your remote Supabase instance:
+1. Ensure your `web/.env` contains correct `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+2. Run the seeding script:
+```bash
+node web/scripts/seedSupabase.js
+```
+Note: Ensure you have run migrations first using the Supabase CLI.
 
 ## Running Tests
 

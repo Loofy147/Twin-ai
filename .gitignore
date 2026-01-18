@@ -5,3 +5,6 @@ __pycache__/
 *.zip
 *.log
 digital_twin_*
+.env
+dist/
+.DS_Store
