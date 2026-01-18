@@ -32,11 +32,7 @@ async function seed() {
         ...generator.generateScenarioQuestions()
     ];
 
-    // 1. Seed Profile
-    console.log("Seeding profile...");
-    await supabase.from('profile').upsert({ id: 1 });
-
-    // 2. Seed Dimensions
+    // 1. Seed Dimensions
     console.log("Seeding dimensions...");
     for (let i = 0; i < dimensions.length; i++) {
         const { error } = await supabase.from('dimensions').upsert({

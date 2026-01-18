@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { Navigation } from './components/common/Navigation';
 import { HomeView } from './components/views/HomeView';
 import { validateEmail, validateRequired } from './utils/validation';
@@ -8,8 +10,25 @@ import { AnalyticsView } from './components/views/AnalyticsView';
 import { IntegrationsView } from './components/views/IntegrationsView';
 import DigitalTwinSimulator from './components/DigitalTwinDemo';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
+  const { user, loading, signIn, signUp, signOut } = useAuth();
   const [currentView, setCurrentView] = useState('home');
+  const [isLogin, setIsLogin] = useState(true);
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (isLogin) {
+        await signIn(authEmail, authPassword);
+      } else {
+        await signUp(authEmail, authPassword);
+      }
+    } catch (err) {
+      // Error handled by context
+    }
+  };
 
   const renderView = () => {
     switch(currentView) {
@@ -43,9 +62,76 @@ const App: React.FC = () => {
     setEmail('');
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-white text-xl animate-pulse">Initializing Digital Twin...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-slate-900 border border-white/10 rounded-2xl p-8 shadow-2xl">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
+              Digital Twin AI
+            </h1>
+            <p className="text-slate-400 mt-2">Sign in to your personal intelligence</p>
+          </div>
+          <form onSubmit={handleAuth} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-1">Email</label>
+              <input
+                type="email"
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 outline-none focus:border-purple-500 transition-colors"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-1">Password</label>
+              <input
+                type="password"
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 outline-none focus:border-purple-500 transition-colors"
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 py-3 rounded-xl font-bold hover:opacity-90 transition-opacity"
+            >
+              {isLogin ? 'Sign In' : 'Create Account'}
+            </button>
+          </form>
+          <div className="mt-6 text-center">
+            <button
+              onClick={() => setIsLogin(!isLogin)}
+              className="text-purple-400 hover:text-purple-300 text-sm"
+            >
+              {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-white overflow-x-hidden font-sans">
       <Navigation currentView={currentView} setCurrentView={setCurrentView} />
+      <div className="fixed top-4 right-4 z-50">
+        <button
+          onClick={() => signOut()}
+          className="bg-slate-800/50 hover:bg-slate-800 border border-white/10 px-4 py-2 rounded-lg text-sm text-slate-400 hover:text-white transition-all"
+        >
+          Sign Out
+        </button>
+      </div>
       <main>
         {renderView()}
       </main>
@@ -83,6 +169,16 @@ const App: React.FC = () => {
       </footer>
 
     </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 };
 
