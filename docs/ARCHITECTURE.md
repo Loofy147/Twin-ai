@@ -7,6 +7,7 @@ Twin-ai is a personal learning system designed to build a "digital twin" of the 
 2.  **Generating** targeted questions based on this data.
 3.  **Selecting** questions adaptively to maximize learning.
 4.  **Detecting patterns** in user responses to refine the digital profile.
+5.  **Training an RL Agent** to act as a digital twin using these patterns.
 
 ## Data Flow
 
@@ -17,10 +18,12 @@ Twin-ai is a personal learning system designed to build a "digital twin" of the 
     *   **Dynamic**: Questions generated on-the-fly from recently synced entities.
 4.  **Adaptive Selection**: The system selects 10-20 questions daily based on dimension coverage and pattern confidence.
 5.  **Feedback Loop**: User responses are analyzed by the Pattern Detector, which updates the `patterns` table, influencing future question selection.
+6.  **RL Training**: Detected patterns and real-world data are used to train a Reinforcement Learning agent in a simulated environment, creating a functional digital twin.
 
 ## Components
 
 *   **Mobile App (React Native)**: Handles local integrations like Contacts and Call Logs.
 *   **Web App (React)**: Handles cloud integrations like Google Calendar and Google Drive.
 *   **Shared Engine**: Contains the core logic for question generation, selection, and pattern detection.
+*   **RL Training System (Python)**: Uses stable-baselines3 to train a digital twin agent based on learned preferences.
 *   **SQLite Database**: Local-first storage for all user data, ensuring privacy and control.
