@@ -5,15 +5,25 @@ export const useIntersectionObserver = (options: any = {}): [React.RefObject<any
   const elementRef = useRef(null);
 
   useEffect(() => {
+    const el = elementRef.current;
+    if (!el) return;
+
+    if (typeof IntersectionObserver === 'undefined') {
+      setIsVisible(true);
+      return;
+    }
+
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) {
         setIsVisible(true);
         observer.disconnect();
       }
-    }, { threshold: 0.1, ...options });
+    }, {
+      threshold: 0,
+      ...options
+    });
 
-    const el = elementRef.current;
-    if (el) observer.observe(el);
+    observer.observe(el);
     return () => observer.disconnect();
   }, [options.root, options.rootMargin, options.threshold]);
 

@@ -19,13 +19,23 @@ Explore our detailed documentation in the `docs/` directory:
 *   [**Algorithms**](./docs/ALGORITHMS.md): Adaptive selection and pattern detection logic.
 *   [**Integrations**](./docs/INTEGRATIONS.md): Mobile and Web integration strategies.
 *   [**Setup & Development**](./docs/SETUP.md): How to install, seed, and test the system.
+*   [**Deployment Guide**](./docs/DEPLOYMENT.md): How to deploy to cloud environments.
 
 ## Getting Started
 
 1.  Clone the repository.
-2.  Install dependencies in `mobile/` and `web/`.
-3.  Run the seeding script: `node shared/generateInitialBank.js`.
-4.  Run the integration test: `node tests/integration_test.js`.
+2.  Install dependencies:
+    ```bash
+    cd mobile && npm install
+    cd ../web && npm install
+    ```
+3.  **Local Setup**:
+    *   Run the seeding script: `node shared/generateInitialBank.js`.
+    *   Run the integration test: `node tests/integration_test.js`.
+4.  **Cloud Setup (Supabase)**:
+    *   Configure `web/.env` with your Supabase credentials.
+    *   Push migrations: `npx supabase db push` (requires Supabase CLI).
+    *   Seed the cloud database: `node web/scripts/seedSupabase.js`.
 
 ## The Result
 After 500+ responses, you'll have a digital twin that knows:
