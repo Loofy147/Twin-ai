@@ -1,60 +1,106 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { google } from "https://esm.sh/googleapis@140.0.0"
 
-const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID')
-const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET')
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID')
+const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET')
+const GOOGLE_REDIRECT_URI = Deno.env.get('GOOGLE_REDIRECT_URI')
 
 serve(async (req) => {
-  const authHeader = req.headers.get('Authorization')
-
-  // Basic security check - could be a secret key for cron
-  if (authHeader !== `Bearer ${Deno.env.get('SYNC_SECRET_KEY')}`) {
-    // Also allow service role if needed
-    // return new Response('Unauthorized', { status: 401 })
-  }
-
   const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!)
 
   try {
-    // 1. Fetch all active integration tokens
-    const { data: tokens, error: tokenError } = await supabase
+    const { integration } = await req.json()
+    const authHeader = req.headers.get('Authorization')
+    const token = authHeader?.replace('Bearer ', '')
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+
+    if (authError || !user) return new Response('Unauthorized', { status: 401 })
+
+    // Fetch tokens
+    const { data: integrationToken, error: tokenError } = await supabase
       .from('integration_tokens')
       .select('*')
-      .eq('integration_type', 'google_calendar')
+      .eq('profile_id', user.id)
+      .eq('integration_type', integration)
+      .single()
 
-    if (tokenError) throw tokenError
+    if (tokenError || !integrationToken) throw new Error('Integration not found')
 
-    const results = []
+    const oauth2Client = new google.auth.OAuth2(
+      GOOGLE_CLIENT_ID,
+      GOOGLE_CLIENT_SECRET,
+      GOOGLE_REDIRECT_URI
+    )
 
-    for (const token of tokens) {
-      try {
-        // TODO: Implement actual sync logic here
-        // 1. Refresh token if needed
-        // 2. Fetch events from Google API
-        // 3. Store in entities table
-        // 4. Generate questions
+    oauth2Client.setCredentials({
+      access_token: integrationToken.access_token,
+      refresh_token: integrationToken.refresh_token,
+      expiry_date: integrationToken.expires_at ? new Date(integrationToken.expires_at).getTime() : undefined
+    })
 
-        console.log(`Syncing for profile: ${token.profile_id}`)
+    let syncedCount = 0;
 
-        results.push({ profile_id: token.profile_id, status: 'success' })
-      } catch (err) {
-        console.error(`Sync failed for profile ${token.profile_id}:`, err)
-        results.push({ profile_id: token.profile_id, status: 'failed', error: err.message })
+    if (integration === 'google_calendar') {
+      const calendar = google.calendar({ version: 'v3', auth: oauth2Client })
+      const response = await calendar.events.list({
+        calendarId: 'primary',
+        timeMin: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+        maxResults: 100,
+        singleEvents: true,
+        orderBy: 'startTime'
+      })
+
+      const events = response.data.items || []
+      for (const event of events) {
+        await supabase.from('entities').upsert({
+          profile_id: user.id,
+          entity_type: 'event',
+          name: event.summary || 'Untitled',
+          metadata: {
+            source: 'google_calendar',
+            source_id: event.id,
+            start: event.start?.dateTime || event.start?.date,
+            end: event.end?.dateTime || event.end?.date
+          }
+        }, { onConflict: 'profile_id,name,entity_type' })
       }
+      syncedCount = events.length;
+    } else if (integration === 'google_drive') {
+      const drive = google.drive({ version: 'v3', auth: oauth2Client })
+      const response = await drive.files.list({
+        pageSize: 50,
+        fields: 'files(id, name, mimeType, viewedByMeTime)',
+        orderBy: 'viewedByMeTime desc',
+        q: "trashed = false"
+      })
+
+      const files = response.data.files || []
+      for (const file of files) {
+        await supabase.from('entities').upsert({
+          profile_id: user.id,
+          entity_type: 'file',
+          name: file.name || 'Untitled',
+          metadata: {
+            source: 'google_drive',
+            source_id: file.id,
+            mimeType: file.mimeType,
+            lastViewed: file.viewedByMeTime
+          }
+        }, { onConflict: 'profile_id,name,entity_type' })
+      }
+      syncedCount = files.length;
     }
 
-    return new Response(
-      JSON.stringify({ results }),
-      { headers: { "Content-Type": "application/json" } }
-    )
+    await supabase.from('integration_tokens').update({
+      last_used_at: new Date().toISOString()
+    }).eq('id', integrationToken.id)
+
+    return new Response(JSON.stringify({ success: true, count: syncedCount }), { headers: { "Content-Type": "application/json" } })
 
   } catch (error) {
-    console.error('Sync function error:', error)
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
-    )
+    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { "Content-Type": "application/json" } })
   }
 })

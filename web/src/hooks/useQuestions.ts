@@ -1,23 +1,50 @@
 import { useState, useEffect, useCallback } from 'react';
 import { databaseService, Question, Response } from '../services/database.service';
 
-export const useQuestions = (limit: number = 10) => {
+export const useQuestions = (limit: number = 10, profileId?: string) => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [selectedDimension, setSelectedDimension] = useState<string | null>(null);
 
   const loadQuestions = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await databaseService.fetchQuestions(limit);
-      setQuestions(data);
+      const offset = (page - 1) * limit;
+      const { data, count, error: fetchError } = await databaseService.getQuestions({
+        limit,
+        offset,
+        dimensionId: selectedDimension || undefined,
+        profileId,
+        excludeAnswered: !!profileId
+      });
+
+      if (fetchError) throw fetchError;
+
+      setQuestions(data || []);
+      setTotalCount(count || 0);
       setError(null);
     } catch (err: any) {
       setError(err.message || 'Failed to load questions');
     } finally {
       setLoading(false);
     }
-  }, [limit]);
+  }, [limit, page, selectedDimension, profileId]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [selectedDimension]);
+
+  useEffect(() => {
+    loadQuestions();
+  }, [loadQuestions]);
+
+  const goToPage = (newPage: number) => {
+    setPage(newPage);
+  };
 
   const submitAnswer = async (response: Response) => {
     try {
@@ -29,9 +56,17 @@ export const useQuestions = (limit: number = 10) => {
     }
   };
 
-  useEffect(() => {
-    loadQuestions();
-  }, [loadQuestions]);
-
-  return { questions, loading, error, reloadQuestions: loadQuestions, submitAnswer };
+  return {
+    questions,
+    loading,
+    error,
+    page,
+    totalCount,
+    totalPages: Math.ceil(totalCount / limit),
+    selectedDimension,
+    setSelectedDimension,
+    goToPage,
+    submitAnswer,
+    reloadQuestions: loadQuestions
+  };
 };

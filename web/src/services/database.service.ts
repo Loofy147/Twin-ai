@@ -200,70 +200,74 @@ class DatabaseService {
   }
 
   /**
-   * Fetch questions with pagination and filtering
+   * Get questions with pagination and filtering
    */
-  async fetchQuestions(
-    limit: number = 10,
-    offset: number = 0,
-    filters?: {
-      difficulty?: number;
-      dimension?: number;
-      excludeAnswered?: boolean;
-      profileId?: string;
-    }
-  ): Promise<Question[]> {
-    const timer = logger.startTimer('db_fetch_questions');
+  async getQuestions(options: {
+    limit?: number;
+    offset?: number;
+    difficulty?: number;
+    dimensionId?: string | number;
+    excludeAnswered?: boolean;
+    profileId?: string;
+  } = {}): Promise<{ data: Question[]; count: number; error: any }> {
+    const timer = logger.startTimer('db_get_questions');
+    const { limit = 10, offset = 0, difficulty, dimensionId, excludeAnswered, profileId } = options;
 
-    const result = await this.withRetry(
-      async () => {
-        let query = supabase
-          .from('questions')
-          .select(`
-            *,
-            options:answer_options(*)
-          `)
-          .eq('active', true);
+    try {
+      const result = await this.withRetry(
+        async () => {
+          let query = supabase
+            .from('questions')
+            .select(`
+              *,
+              options:answer_options(*)
+            `, { count: 'exact' })
+            .eq('active', true);
 
-        // Apply filters
-        if (filters?.difficulty) {
-          query = query.eq('difficulty_level', filters.difficulty);
-        }
-        if (filters?.dimension) {
-          query = query.eq('primary_dimension_id', filters.dimension);
-        }
-
-        // Exclude answered questions
-        if (filters?.excludeAnswered && filters?.profileId) {
-          const { data: answered } = await supabase
-            .from('responses')
-            .select('question_id')
-            .eq('profile_id', filters.profileId);
-
-          if (answered && answered.length > 0) {
-            const answeredIds = answered.map(r => r.question_id);
-            query = query.not('id', 'in', `(${answeredIds.join(',')})`);
+          // Apply filters
+          if (difficulty) {
+            query = query.eq('difficulty_level', difficulty);
           }
-        }
+          if (dimensionId) {
+            query = query.eq('primary_dimension_id', dimensionId);
+          }
 
-        query = query.range(offset, offset + limit - 1);
+          // Exclude answered questions
+          if (excludeAnswered && profileId) {
+            const { data: answered } = await supabase
+              .from('responses')
+              .select('question_id')
+              .eq('profile_id', profileId);
 
-        const { data, error } = await query;
+            if (answered && answered.length > 0) {
+              const answeredIds = answered.map(r => r.question_id);
+              query = query.not('id', 'in', `(${answeredIds.join(',')})`);
+            }
+          }
 
-        if (error) throw error;
-        return (data || []) as Question[];
-      },
-      'fetchQuestions',
-      { limit, offset, filters }
-    );
+          query = query.range(offset, offset + limit - 1);
 
-    logger.info('Questions fetched', {
-      count: result.length,
-      limit,
-      offset,
-      duration_ms: timer()
-    });
+          const { data, error, count } = await query;
 
-    return result;
+          if (error) throw error;
+          return { data: (data || []) as Question[], count: count || 0 };
+        },
+        'getQuestions',
+        { limit, offset, dimensionId }
+      );
+
+      logger.info('Questions fetched', {
+        count: result.data.length,
+        total: result.count,
+        limit,
+        offset,
+        duration_ms: timer()
+      });
+
+      return { data: result.data, count: result.count, error: null };
+    } catch (err: any) {
+      return { data: [], count: 0, error: err };
+    }
   }
 
   /**

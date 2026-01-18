@@ -27,3 +27,9 @@ export const validateUrl = (url: string): boolean => {
 export const sanitizeString = (str: string): string => {
   return str.replace(/[<>]/g, '').trim();
 };
+
+export const validatePassword = (password: string): boolean => {
+  // Min 8 chars, at least one uppercase, one lowercase, one number, and one special char
+  const re = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+  return re.test(password);
+};
