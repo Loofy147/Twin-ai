@@ -10,15 +10,16 @@ The web application uses Supabase for cloud data storage.
 2.  **Push Schema**:
     Ensure you have the Supabase CLI installed and logged in.
     ```bash
+    cd web
     npx supabase link --project-ref your-project-ref
-    npx supabase db push
+    npm run db:migrate
     ```
 3.  **Seed Data**:
     Populate the cloud database with the initial question bank.
     ```bash
     cd web
     # Ensure .env has VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
-    node scripts/seedSupabase.js
+    npm run db:seed
     ```
 
 ## Web Application (Vercel)
