@@ -15,7 +15,7 @@ class GoogleDriveIntegration {
 
     for (const file of files) {
       db.prepare(`
-        INSERT INTO entities (entity_type, name, metadata)
+        INSERT OR IGNORE INTO entities (entity_type, name, metadata)
         VALUES (?, ?, ?)
       `).run('file', file.name, JSON.stringify({
         source: 'google_drive',
@@ -52,7 +52,7 @@ class GoogleDriveIntegration {
 
     for (const q of questions) {
       db.prepare(`
-        INSERT INTO questions (text, question_type, engagement_factor, primary_dimension_id, metadata)
+        INSERT OR IGNORE INTO questions (text, question_type, engagement_factor, primary_dimension_id, metadata)
         VALUES (?, ?, ?, ?, ?)
       `).run(q.text, q.question_type, q.engagement_factor, q.primary_dimension_id, q.metadata);
     }

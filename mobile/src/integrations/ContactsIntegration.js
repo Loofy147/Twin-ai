@@ -16,9 +16,9 @@ class ContactsIntegration {
     for (const contact of contacts) {
       const fullName = `${contact.givenName} ${contact.familyName}`;
 
-      // Store in entities table
+      // Store in entities table - Use INSERT OR IGNORE to prevent duplicates
       db.prepare(`
-        INSERT INTO entities (entity_type, name, metadata)
+        INSERT OR IGNORE INTO entities (entity_type, name, metadata)
         VALUES (?, ?, ?)
       `).run('person', fullName, JSON.stringify({
         company: contact.company,
@@ -50,10 +50,10 @@ class ContactsIntegration {
       });
     }
 
-    // Store generated questions
+    // Store generated questions - Use INSERT OR IGNORE to prevent duplicates
     for (const q of questions) {
       db.prepare(`
-        INSERT INTO questions (text, question_type, primary_dimension_id, metadata)
+        INSERT OR IGNORE INTO questions (text, question_type, primary_dimension_id, metadata)
         VALUES (?, ?, ?, ?)
       `).run(q.text, q.question_type, q.primary_dimension_id, q.metadata);
     }

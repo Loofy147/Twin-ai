@@ -52,7 +52,7 @@ class CallHistoryIntegration {
 
     for (const q of questions) {
       db.prepare(`
-        INSERT INTO questions (text, question_type, primary_dimension_id, metadata)
+        INSERT OR IGNORE INTO questions (text, question_type, primary_dimension_id, metadata)
         VALUES (?, ?, ?, ?)
       `).run(q.text, q.question_type, q.primary_dimension_id, q.metadata);
     }
