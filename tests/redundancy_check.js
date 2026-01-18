@@ -12,11 +12,12 @@ async function runRedundancyCheck() {
     // Clear old data for a fresh start in this test
     initDb();
     db.prepare("DELETE FROM responses").run();
+    db.prepare("DELETE FROM answer_options").run();
     db.prepare("DELETE FROM questions").run();
     db.prepare("DELETE FROM entities").run();
     db.prepare("DELETE FROM patterns").run();
-    db.prepare("DELETE FROM dimensions").run();
     db.prepare("DELETE FROM aspects").run();
+    db.prepare("DELETE FROM dimensions").run();
 
     // Seed dimensions
     const dimensions = [
