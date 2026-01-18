@@ -21,6 +21,7 @@ const DigitalTwinSimulator = () => {
   const [learnedPatterns, setLearnedPatterns] = useState([]);
   const [currentScenario, setCurrentScenario] = useState(null);
   const [agentDecision, setAgentDecision] = useState(null);
+  const [agentReasoning, setAgentReasoning] = useState("");
 
   // Simulated State
   const [state, setState] = useState({
@@ -95,6 +96,35 @@ const DigitalTwinSimulator = () => {
         }
       ],
       optimalChoice: 'B'
+    },
+    {
+      id: 3,
+      context: 'Deadline Crisis: Project Due Tomorrow',
+      situation: 'Your Q4 Strategy Report is due tomorrow and is only 40% complete. Energy is moderate (50%). A friend invites you to a last-minute dinner.',
+      options: [
+        {
+          id: 'A',
+          text: 'Go to dinner (2 hours)',
+          valueAlign: 0.7,
+          goalProgress: 0.0,
+          relBoost: 0.9
+        },
+        {
+          id: 'B',
+          text: 'Deep work on Report (4 hours)',
+          valueAlign: 0.5,
+          goalProgress: 1.0,
+          relBoost: 0.1
+        },
+        {
+          id: 'C',
+          text: 'Work for 2 hours, then quick 30min dinner',
+          valueAlign: 0.8,
+          goalProgress: 0.6,
+          relBoost: 0.5
+        }
+      ],
+      optimalChoice: 'B'
     }
   ];
 
@@ -118,6 +148,17 @@ const DigitalTwinSimulator = () => {
 
       const decision = scenario.options.find(o => o.id === chosenId);
       setAgentDecision(decision);
+
+      // Generate Reasoning
+      let reasoning = "";
+      if (decision.id === scenario.optimalChoice) {
+        if (scenario.id === 1) reasoning = "Prioritizing high-impact deep work while maintaining key relationship with Sarah.";
+        else if (scenario.id === 2) reasoning = "Protecting low energy to avoid burnout, using async communication for John.";
+        else if (scenario.id === 3) reasoning = "Strict focus on critical deadline; socializing deferred to post-deadline.";
+      } else {
+        reasoning = "Suboptimal choice: misalignment between current energy and task urgency.";
+      }
+      setAgentReasoning(reasoning);
 
       // Calculate reward
       const r = decision.id === scenario.optimalChoice ? 1.0 : -0.5;
@@ -258,25 +299,37 @@ const DigitalTwinSimulator = () => {
             </div>
 
             {agentDecision && (
-              <div className={`p-4 rounded-lg ${
-                agentDecision.id === currentScenario.optimalChoice
-                  ? 'bg-green-500/20 border-2 border-green-400'
-                  : 'bg-orange-500/20 border-2 border-orange-400'
-              }`}>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Brain className="w-5 h-5" />
-                    <span className="font-bold">Agent Decision:</span>
-                    <span>{agentDecision.text}</span>
+              <div className="space-y-4">
+                <div className={`p-4 rounded-lg ${
+                  agentDecision.id === currentScenario.optimalChoice
+                    ? 'bg-green-500/20 border-2 border-green-400'
+                    : 'bg-orange-500/20 border-2 border-orange-400'
+                }`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Brain className="w-5 h-5" />
+                      <span className="font-bold">Agent Decision:</span>
+                      <span>{agentDecision.text}</span>
+                    </div>
+                    <div className="font-bold text-2xl">
+                      Reward: {reward.toFixed(2)}
+                    </div>
                   </div>
-                  <div className="font-bold text-2xl">
-                    Reward: {reward.toFixed(2)}
+                  <div className="text-sm text-white/80">
+                    {agentDecision.id === currentScenario.optimalChoice
+                      ? '✓ Agent chose optimally! Learning successful.'
+                      : '⚠ Suboptimal choice - agent will learn from this.'}
                   </div>
                 </div>
-                <div className="text-sm text-white/80">
-                  {agentDecision.id === currentScenario.optimalChoice
-                    ? '✓ Agent chose optimally! Learning successful.'
-                    : '⚠ Suboptimal choice - agent will learn from this.'}
+
+                <div className="bg-blue-900/30 border border-blue-500/30 p-4 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1 text-blue-300 text-sm font-bold uppercase tracking-wider">
+                    <Zap className="w-4 h-4" />
+                    Agent Reasoning
+                  </div>
+                  <div className="text-blue-100 italic">
+                    "{agentReasoning}"
+                  </div>
                 </div>
               </div>
             )}

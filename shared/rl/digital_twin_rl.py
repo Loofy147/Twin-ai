@@ -8,19 +8,56 @@ import copy
 from typing import Dict, List, Any, Optional
 
 # ============================================
-# 1. RL ENVIRONMENT
+# 1. RL ENVIRONMENT & SCENARIOS
 # ============================================
+
+class ScenarioManager:
+    """Manages different simulation scenarios for training."""
+
+    @staticmethod
+    def get_scenario(scenario_type: str, user_data: Dict) -> Dict:
+        base_state = {
+            'energy': 0.8,
+            'cognitive_load': 0.1,
+            'hour': 8,
+            'day_of_week': 0,
+            'projects': copy.deepcopy(user_data.get('projects', [])),
+            'relationships': copy.deepcopy(user_data.get('relationships', [])),
+            'time_available': 480
+        }
+
+        if scenario_type == 'deadline_crisis':
+            # Urgent projects, low initial energy
+            base_state['energy'] = 0.4
+            for p in base_state['projects']:
+                p['deadline_days'] = random.randint(1, 3)
+                p['priority'] = 1.0
+
+        elif scenario_type == 'relaxed_weekend':
+            base_state['day_of_week'] = 5 # Saturday
+            base_state['hour'] = 10
+            base_state['time_available'] = 720
+            base_state['energy'] = 0.9
+
+        elif scenario_type == 'social_focus':
+            # Many relationships needing contact
+            for r in base_state['relationships']:
+                r['days_since_contact'] = random.randint(10, 30)
+                r['priority'] = 0.8
+
+        return base_state
 
 class PersonalLifeEnv(gym.Env):
     """
     Custom Gym Environment for training a Digital Twin
     """
 
-    def __init__(self, user_data: Dict, user_preferences: Dict):
+    def __init__(self, user_data: Dict, user_preferences: Dict, db_connection=None):
         super(PersonalLifeEnv, self).__init__()
 
         self.user_data = user_data
         self.preferences = user_preferences
+        self.db = db_connection
 
         # Define action space
         # Actions: [action_type, target_id, duration, intensity/depth]
@@ -50,18 +87,19 @@ class PersonalLifeEnv(gym.Env):
         self.reset()
 
     def reset(self, seed=None, options=None):
-        """Initialize state from user data"""
+        """Initialize state from user data using ScenarioManager"""
         super().reset(seed=seed)
-        self.state = {
-            'energy': 0.8,
-            'cognitive_load': 0.1,
-            'hour': 8,
-            'day_of_week': 0, # Monday
-            'projects': copy.deepcopy(self.user_data.get('projects', [])),
-            'relationships': copy.deepcopy(self.user_data.get('relationships', [])),
-            'time_available': 480 # 8 hours in minutes
-        }
-        return self._get_obs(), {}
+
+        scenario_type = 'workday'
+        if options and 'scenario_type' in options:
+            scenario_type = options['scenario_type']
+        else:
+            scenario_type = random.choice(['workday', 'deadline_crisis', 'relaxed_weekend', 'social_focus'])
+
+        self.state = ScenarioManager.get_scenario(scenario_type, self.user_data)
+        self.current_scenario = scenario_type
+
+        return self._get_obs(), {'scenario': scenario_type}
 
     def _get_obs(self):
         return {
@@ -81,6 +119,9 @@ class PersonalLifeEnv(gym.Env):
         old_state = copy.deepcopy(self.state)
         self._apply_action(action_type, target_idx, duration, intensity_idx)
 
+        # Introduce stochasticity (Random Events)
+        event_info = self._apply_random_events()
+
         # Calculate reward
         reward = self._calculate_reward(action_type, old_state, self.state)
 
@@ -88,7 +129,35 @@ class PersonalLifeEnv(gym.Env):
         terminated = self.state['hour'] >= 22 or self.state['time_available'] <= 0
         truncated = False
 
-        return self._get_obs(), reward, terminated, truncated, {}
+        info = {'event': event_info} if event_info else {}
+
+        return self._get_obs(), reward, terminated, truncated, info
+
+    def _apply_random_events(self):
+        """Simulate unexpected life events."""
+        if random.random() < 0.05: # 5% chance of an event per step
+            events = [
+                ('unexpected_meeting', {'time_cost': 60, 'energy_cost': 0.1}),
+                ('energy_boost', {'energy_gain': 0.2}),
+                ('energy_crash', {'energy_cost': 0.3}),
+                ('urgent_request', {'project_idx': 0, 'priority_increase': 0.2})
+            ]
+            event_type, params = random.choice(events)
+
+            if event_type == 'unexpected_meeting':
+                self.state['time_available'] -= params['time_cost']
+                self.state['hour'] += params['time_cost'] / 60
+                self.state['energy'] -= params['energy_cost']
+            elif event_type == 'energy_boost':
+                self.state['energy'] = min(1.0, self.state['energy'] + params['energy_gain'])
+            elif event_type == 'energy_crash':
+                self.state['energy'] = max(0.0, self.state['energy'] - params['energy_cost'])
+            elif event_type == 'urgent_request' and self.state['projects']:
+                idx = params['project_idx'] % len(self.state['projects'])
+                self.state['projects'][idx]['priority'] = min(1.0, self.state['projects'][idx]['priority'] + params['priority_increase'])
+
+            return event_type
+        return None
 
     def _apply_action(self, action_type, target_idx, duration, intensity):
         self.state['time_available'] -= duration
@@ -117,26 +186,45 @@ class PersonalLifeEnv(gym.Env):
     def _calculate_reward(self, action_type, old_state, new_state):
         reward = 0.0
 
-        # Value alignment (from patterns)
+        # Value alignment (from patterns), weighted by confidence if available
         reward += self._calculate_value_alignment(action_type)
 
-        # Energy management
-        if new_state['energy'] < 0.2:
-            reward -= 0.5 # Penalty for burnout
+        # Energy management: High penalty for very low energy, bonus for recovery
+        if new_state['energy'] < 0.1:
+            reward -= 1.0 # Severe penalty for exhaustion
+        elif new_state['energy'] < 0.3:
+            reward -= 0.3
 
-        # Relationship maintenance
+        if action_type == 'rest' and new_state['energy'] > old_state['energy']:
+            reward += 0.2 # Small bonus for choosing to recover
+
+        # Relationship maintenance: Priority-weighted
         reward += self._calculate_relationship_reward(old_state['relationships'], new_state['relationships'])
 
-        # Project progress
+        # Project progress: Urgent and Priority weighted
         for proj in new_state['projects']:
-            if proj['deadline_days'] < 7 and proj['progress'] < 0.5:
-                reward -= 0.2 # Penalty for falling behind
+            urgency = max(0, (7 - proj['deadline_days']) / 7) if proj['deadline_days'] < 7 else 0
+            priority = proj['priority']
+
+            # Penalty for neglecting urgent/high-priority projects
+            if urgency > 0 and action_type != 'work_on_project':
+                reward -= 0.1 * urgency * priority
+
+            # Bonus for progress on important things
+            if action_type == 'work_on_project' and new_state['projects']:
+                # Find matching project and check progress delta
+                for old_p in old_state['projects']:
+                    if old_p['id'] == proj['id']:
+                        delta = proj['progress'] - old_p['progress']
+                        if delta > 0:
+                            reward += delta * priority * (1 + urgency)
 
         return reward
 
     def _calculate_value_alignment(self, action_type):
         """
         Calculate reward based on alignment with learned patterns from the database.
+        Includes confidence weighting.
         """
         # Mapping action types to dimension/aspect codes
         action_mapping = {
@@ -153,18 +241,19 @@ class PersonalLifeEnv(gym.Env):
         if not aspect_code:
             return 0.0
 
-        # Attempt to get the pattern strength for this aspect
-        # In a real training run, this would be pre-cached
+        # Attempt to get the pattern strength and confidence for this aspect
         try:
             cursor = self.db.cursor()
             cursor.execute("""
-                SELECT strength FROM patterns p
+                SELECT strength, confidence FROM patterns p
                 JOIN aspects a ON p.aspect_id = a.id
                 WHERE a.code = ? AND p.profile_id = ?
             """, (aspect_code, self.user_data['profile_id']))
             row = cursor.fetchone()
             if row:
-                return float(row[0])
+                strength, confidence = row
+                # Weight strength by confidence
+                return float(strength) * float(confidence)
         except Exception:
             pass
 
@@ -212,7 +301,7 @@ class DataPipeline:
         cursor = self.db.cursor()
         cursor.execute("""
             SELECT
-                e.id, e.name,
+                e.id, e.name, e.metadata,
                 MAX(CASE WHEN ea.attribute_type = 'trust' THEN ea.value END) as strength,
                 MAX(CASE WHEN ea.attribute_type = 'priority' THEN ea.value END) as priority
             FROM entities e
@@ -225,12 +314,13 @@ class DataPipeline:
 
         relationships = []
         for r in rows:
+            metadata = json.loads(r[2]) if r[2] else {}
             relationships.append({
                 'id': r[0],
                 'name': r[1],
-                'strength': r[2] if r[2] is not None else 0.5,
-                'priority': r[3] if r[3] is not None else 0.5,
-                'days_since_contact': 7 # Default
+                'strength': r[3] if r[3] is not None else 0.5,
+                'priority': r[4] if r[4] is not None else 0.5,
+                'days_since_contact': metadata.get('days_since_contact', 7)
             })
         return relationships
 
@@ -265,7 +355,7 @@ class DigitalTwinTrainer:
         self.profile_id = profile_id
         self.data_pipeline = DataPipeline(db_connection)
         self.user_data = self.data_pipeline.prepare_user_data(profile_id)
-        self.env = PersonalLifeEnv(self.user_data, self.user_data.get('preferences', {}))
+        self.env = PersonalLifeEnv(self.user_data, self.user_data.get('preferences', {}), db_connection=db_connection)
 
     def train(self, total_timesteps: int = 10000):
         try:
@@ -280,6 +370,53 @@ class DigitalTwinTrainer:
         model.learn(total_timesteps=total_timesteps)
         model.save(f"digital_twin_{self.profile_id}")
         return model
+
+    def generate_validation_questions(self, model, n_questions: int = 5):
+        """
+        Generates validation questions based on agent decisions and inserts them into the database.
+        """
+        questions_generated = []
+        for _ in range(n_questions):
+            obs, info = self.env.reset()
+            action, _states = model.predict(obs, deterministic=True)
+
+            action_idx, target_idx, duration_idx, intensity_idx = action
+            action_type = self.env.action_types[action_idx]
+            duration = (duration_idx + 1) * 15
+
+            # Describe the scenario and agent choice
+            scenario_desc = f"Context: {info['scenario']}. Hour: {self.env.state['hour']:.1f}. Energy: {self.env.state['energy']:.2f}."
+            agent_choice_desc = f"The agent decided to: {action_type} for {duration} minutes."
+
+            full_question_text = f"In this situation: {scenario_desc} {agent_choice_desc} Does this match what you would do?"
+
+            # Insert into database
+            try:
+                cursor = self.db.cursor()
+                cursor.execute("""
+                    INSERT INTO questions (text, question_type, difficulty_level, primary_dimension_id, metadata)
+                    VALUES (?, 'RL_VALIDATION', 3, (SELECT id FROM dimensions WHERE name = 'values' LIMIT 1), ?)
+                """, (full_question_text, json.dumps({
+                    'scenario': info['scenario'],
+                    'agent_action': action_type,
+                    'action_params': action.tolist()
+                })))
+                question_id = cursor.lastrowid
+
+                # Add answer options
+                options = [("Yes, exactly", 1.0), ("Sort of", 0.5), ("No, not at all", 0.0)]
+                for opt_text, weight in options:
+                    cursor.execute("""
+                        INSERT INTO answer_options (question_id, text, weight)
+                        VALUES (?, ?, ?)
+                    """, (question_id, opt_text, weight))
+
+                self.db.commit()
+                questions_generated.append(question_id)
+            except Exception as e:
+                print(f"Error generating validation question: {e}")
+
+        return questions_generated
 
 if __name__ == "__main__":
     import sqlite3
