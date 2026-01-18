@@ -26,10 +26,10 @@ class AdaptiveSelectionAlgorithm {
             coverageMap[row.primary_dimension_id] = row.response_count;
         });
 
-        // 3. Get weak patterns (confidence < 0.6)
-        const weakPatterns = db.prepare(`
+        // 3. Get patterns with low confidence (< 0.4)
+        const lowConfidenceDimensions = db.prepare(`
             SELECT dimension_id FROM patterns
-            WHERE profile_id = ? AND confidence < 0.6
+            WHERE profile_id = ? AND confidence < 0.4
         `).all(profileId).map(p => p.dimension_id);
 
         // 4. Scoring function
@@ -40,16 +40,27 @@ class AdaptiveSelectionAlgorithm {
             const dimensionResponses = coverageMap[q.primary_dimension_id] || 0;
             score += (1.0 / (dimensionResponses + 1)) * 0.4;
 
-            // Factor 2: Pattern Refinement - Questions that clarify weak patterns
-            if (weakPatterns.includes(q.primary_dimension_id)) {
-                score += 0.3;
+            // Factor 2: Trade-off Prioritization
+            // If dimension confidence is low, prioritize trade-offs to force choices
+            if (q.question_type === 'trade_off' && lowConfidenceDimensions.includes(q.primary_dimension_id)) {
+                score += 0.5;
             }
 
-            // Factor 3: Engagement Factor
+            // Factor 3: Difficulty Progression
+            // As user answers more, increase difficulty
+            const totalResponses = Object.values(coverageMap).reduce((a, b) => a + b, 0);
+            const targetDifficulty = Math.min(5, Math.floor(totalResponses / 20) + 1);
+            if (q.difficulty_level === targetDifficulty) {
+                score += 0.2;
+            } else if (Math.abs(q.difficulty_level - targetDifficulty) === 1) {
+                score += 0.1;
+            }
+
+            // Factor 4: Engagement Factor
             score += (q.engagement_factor || 1.0) * 0.15;
 
-            // Factor 4: Freshness/Randomness
-            score += Math.random() * 0.15;
+            // Factor 5: Randomness
+            score += Math.random() * 0.1;
 
             return { question: q, score };
         });
