@@ -4,9 +4,11 @@ import {
 } from 'lucide-react';
 import { Toast } from '../common/Toast';
 import { useQuestions } from '../../hooks/useQuestions';
+import { useAuth } from '../../contexts/AuthContext';
 
 export const QuestionsView: React.FC = () => {
-  const { questions: dbQuestions, loading, error, submitAnswer } = useQuestions();
+  const { user } = useAuth();
+  const { questions: dbQuestions, loading, error, submitAnswer } = useQuestions(10, user?.id);
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [selectedOption, setSelectedOption] = useState<any>(null);
   const [answeredToday, setAnsweredToday] = useState(0);
@@ -53,9 +55,9 @@ export const QuestionsView: React.FC = () => {
     const startTime = Date.now();
 
     // Attempt real submission if using DB questions
-    if (dbQuestions.length > 0) {
+    if (dbQuestions.length > 0 && user) {
       await submitAnswer({
-        profile_id: 1, // Default profile
+        profile_id: user.id,
         question_id: questions[currentQuestionIdx].id,
         answer_option_id: option.id,
         response_time_ms: Date.now() - startTime,
