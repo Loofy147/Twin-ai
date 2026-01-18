@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "scripts": {
     "start": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "db:migrate": "npx supabase db push",
+    "db:seed": "node scripts/seedSupabase.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.43.0",
