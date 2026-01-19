@@ -1,12 +1,12 @@
 # Database Schema Documentation
 
-Twin-ai uses SQLite for local data storage. The schema is designed for multi-dimensional analysis of user preferences.
+Twin-ai uses a hybrid storage model: SQLite for mobile/local-first and Supabase PostgreSQL for cloud/web. The schema enforces multi-tenant isolation via Row Level Security (RLS).
 
 ## Core Tables
 
 ### `profile`
 Stores the high-level state of the digital twin.
-*   `id`: Primary Key.
+*   `id`: Primary Key (UUID/String, maps to Auth user).
 *   `total_responses`: Total questions answered.
 *   `engagement_score`: Overall engagement level.
 
@@ -40,7 +40,7 @@ Possible responses for each question.
 ### `responses`
 User answers.
 *   `id`: Primary Key.
-*   `profile_id`: Reference to `profile`.
+*   `profile_id`: Reference to `profile` (Mandatory for RLS).
 *   `question_id`: Reference to `questions`.
 *   `answer_option_id`: Reference to `answer_options`.
 
@@ -56,10 +56,16 @@ Detected user patterns and preferences.
 ### `entities`
 Real-world objects from integrations.
 *   `id`: Primary Key.
+*   `profile_id`: Reference to `profile`.
 *   `entity_type`: person, file, event.
 *   `name`: Display name.
 *   `metadata`: JSON field with source-specific data.
 
+## Security & Integrity
+*   **Multi-tenancy**: Every user-specific table includes a `profile_id` column protected by Row Level Security (RLS) policies.
+*   **Data Isolation**: Unique constraints (e.g., `(profile_id, name, entity_type)` on `entities`) prevent data collisions between users.
+*   **Referential Integrity**: Cascading deletes are enforced on `profile_id` to ensure no orphaned records.
+
 ## Implementation Notes
-*   **JSON Support**: The schema uses SQLite's `JSON` type (text with JSON affinity) for metadata and dynamic fields.
-*   **Upserts**: The `patterns` table has a `UNIQUE(profile_id, dimension_id, aspect_id)` constraint to support `ON CONFLICT` updates during pattern detection.
+*   **JSON Support**: The schema uses SQLite's `JSON` type and PostgreSQL's `JSONB` for metadata and dynamic fields.
+*   **Upserts**: Key tables utilize `UNIQUE` constraints and `ON CONFLICT` patterns to ensure idempotency during synchronization and pattern detection.
