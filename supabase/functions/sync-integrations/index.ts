@@ -54,8 +54,9 @@ serve(async (req) => {
       })
 
       const events = response.data.items || []
-      for (const event of events) {
-        await supabase.from('entities').upsert({
+      if (events.length > 0) {
+        // BOLT OPTIMIZATION: Use batch upsert to reduce cloud network latency and avoid Edge Function timeouts
+        const eventEntities = events.map(event => ({
           profile_id: user.id,
           entity_type: 'event',
           name: event.summary || 'Untitled',
@@ -65,7 +66,10 @@ serve(async (req) => {
             start: event.start?.dateTime || event.start?.date,
             end: event.end?.dateTime || event.end?.date
           }
-        }, { onConflict: 'profile_id,name,entity_type' })
+        }))
+
+        const { error } = await supabase.from('entities').upsert(eventEntities, { onConflict: 'profile_id,name,entity_type' })
+        if (error) throw error;
       }
       syncedCount = events.length;
     } else if (integration === 'google_drive') {
@@ -78,8 +82,9 @@ serve(async (req) => {
       })
 
       const files = response.data.files || []
-      for (const file of files) {
-        await supabase.from('entities').upsert({
+      if (files.length > 0) {
+        // BOLT OPTIMIZATION: Use batch upsert for Drive files
+        const fileEntities = files.map(file => ({
           profile_id: user.id,
           entity_type: 'file',
           name: file.name || 'Untitled',
@@ -89,7 +94,10 @@ serve(async (req) => {
             mimeType: file.mimeType,
             lastViewed: file.viewedByMeTime
           }
-        }, { onConflict: 'profile_id,name,entity_type' })
+        }))
+
+        const { error } = await supabase.from('entities').upsert(fileEntities, { onConflict: 'profile_id,name,entity_type' })
+        if (error) throw error;
       }
       syncedCount = files.length;
     }

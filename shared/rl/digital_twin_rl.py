@@ -125,15 +125,18 @@ class PersonalLifeEnv(gym.Env):
         action_type = self.action_types[action_idx]
         duration = (duration_idx + 1) * 15 # minutes
 
+        # BOLT OPTIMIZATION: Avoid expensive copy.deepcopy(self.state) in the hot path.
+        # We track necessary pre-action values manually for the reward function.
+        energy_before = self.state['energy']
+
         # Execute action impacts
-        old_state = copy.deepcopy(self.state)
-        self._apply_action(action_type, target_idx, duration, intensity_idx)
+        action_deltas = self._apply_action(action_type, target_idx, duration, intensity_idx)
 
         # Introduce stochasticity (Random Events)
         event_info = self._apply_random_events()
 
-        # Calculate reward
-        reward = self._calculate_reward(action_type, old_state, self.state)
+        # Calculate reward using deltas and current state instead of full snapshots
+        reward = self._calculate_reward(action_type, energy_before, action_deltas)
 
         # Check if done (end of day)
         terminated = self.state['hour'] >= 22 or self.state['time_available'] <= 0
@@ -173,6 +176,9 @@ class PersonalLifeEnv(gym.Env):
         self.state['time_available'] -= duration
         self.state['hour'] += duration / 60
 
+        # BOLT OPTIMIZATION: Return deltas for efficient reward calculation
+        deltas = {'project_idx': -1, 'project_delta': 0, 'rel_idx': -1, 'rel_delta': 0}
+
         if action_type == 'work_on_project' and self.state['projects']:
             idx = target_idx % len(self.state['projects'])
             progress_delta = (duration / 120) * (intensity / 5)
@@ -183,6 +189,9 @@ class PersonalLifeEnv(gym.Env):
 
             self.state['energy'] -= 0.1 * (intensity / 5)
             self.state['cognitive_load'] += 0.1 * (intensity / 5)
+
+            deltas['project_idx'] = idx
+            deltas['project_delta'] = progress_delta
 
         elif action_type == 'rest':
             self.state['energy'] = min(1.0, self.state['energy'] + (duration / 120))
@@ -199,30 +208,38 @@ class PersonalLifeEnv(gym.Env):
             self.state['relationships'][idx]['days_since_contact'] = 0
             self.state['energy'] -= 0.05
 
+            deltas['rel_idx'] = idx
+            deltas['rel_delta'] = strength_delta
+
         # Clip values
         self.state['energy'] = np.clip(self.state['energy'], 0, 1)
         self.state['cognitive_load'] = np.clip(self.state['cognitive_load'], 0, 1)
 
-    def _calculate_reward(self, action_type, old_state, new_state):
+        return deltas
+
+    def _calculate_reward(self, action_type, energy_before, action_deltas):
         reward = 0.0
 
         # Value alignment (from patterns), weighted by confidence if available
         reward += self._calculate_value_alignment(action_type)
 
         # Energy management: High penalty for very low energy, bonus for recovery
-        if new_state['energy'] < 0.1:
+        new_energy = self.state['energy']
+        if new_energy < 0.1:
             reward -= 1.0 # Severe penalty for exhaustion
-        elif new_state['energy'] < 0.3:
+        elif new_energy < 0.3:
             reward -= 0.3
 
-        if action_type == 'rest' and new_state['energy'] > old_state['energy']:
+        if action_type == 'rest' and new_energy > energy_before:
             reward += 0.2 # Small bonus for choosing to recover
 
         # Relationship maintenance: Priority-weighted
-        reward += self._calculate_relationship_reward(old_state['relationships'], new_state['relationships'])
+        if action_deltas['rel_idx'] != -1:
+            rel = self.state['relationships'][action_deltas['rel_idx']]
+            reward += action_deltas['rel_delta'] * rel['priority']
 
         # Project progress: Urgent and Priority weighted
-        for proj in new_state['projects']:
+        for i, proj in enumerate(self.state['projects']):
             urgency = max(0, (7 - proj['deadline_days']) / 7) if proj['deadline_days'] < 7 else 0
             priority = proj['priority']
 
@@ -231,13 +248,10 @@ class PersonalLifeEnv(gym.Env):
                 reward -= 0.1 * urgency * priority
 
             # Bonus for progress on important things
-            if action_type == 'work_on_project' and new_state['projects']:
-                # Find matching project and check progress delta
-                for old_p in old_state['projects']:
-                    if old_p['id'] == proj['id']:
-                        delta = proj['progress'] - old_p['progress']
-                        if delta > 0:
-                            reward += delta * priority * (1 + urgency)
+            if action_type == 'work_on_project' and i == action_deltas['project_idx']:
+                delta = action_deltas['project_delta']
+                if delta > 0:
+                    reward += delta * priority * (1 + urgency)
 
         return reward
 
@@ -293,12 +307,6 @@ class PersonalLifeEnv(gym.Env):
         }
         return value_scores.get(action_type, 0.0)
 
-    def _calculate_relationship_reward(self, old_rels, new_rels):
-        reward = 0.0
-        for old, new in zip(old_rels, new_rels):
-            strength_delta = new['strength'] - old['strength']
-            reward += strength_delta * new['priority']
-        return reward
 
 # ============================================
 # 2. DATA PIPELINE

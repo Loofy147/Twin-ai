@@ -169,12 +169,7 @@ class QuestionBankGenerator {
                 const metadataObj = JSON.parse(q.metadata);
                 const options = metadataObj.options;
 
-                // BOLT OPTIMIZATION: Remove redundant options from question metadata to reduce DB size
-                // Options are already stored in the 'answer_options' table.
-                delete metadataObj.options;
-                const minimizedMetadata = JSON.stringify(metadataObj);
-
-                const result = insertStmt.run(q.text, q.question_type, q.difficulty_level, q.engagement_factor, q.primary_dimension_id, minimizedMetadata);
+                const result = insertStmt.run(q.text, q.question_type, q.difficulty_level, q.engagement_factor, q.primary_dimension_id, q.metadata);
                 const questionId = result.lastInsertRowid;
 
                 if (options) {

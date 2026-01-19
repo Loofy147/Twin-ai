@@ -128,24 +128,31 @@ export class GoogleCalendarIntegration {
   }
 
   private async storeEvents(events: CalendarEvent[]): Promise<number> {
-    let count = 0;
-    for (const event of events) {
-      const { error } = await this.supabase
-        .from('entities')
-        .upsert({
-          profile_id: this.profileId,
-          entity_type: 'event',
-          name: event.summary,
-          metadata: {
-            source: 'google_calendar',
-            source_id: event.id,
-            start: event.start,
-            end: event.end
-          }
-        }, { onConflict: 'profile_id,name,entity_type' });
-      if (!error) count++;
+    if (events.length === 0) return 0;
+
+    // BOLT OPTIMIZATION: Use batch upsert to reduce network roundtrips from O(N) to O(1)
+    const entities = events.map(event => ({
+      profile_id: this.profileId,
+      entity_type: 'event',
+      name: event.summary,
+      metadata: {
+        source: 'google_calendar',
+        source_id: event.id,
+        start: event.start,
+        end: event.end
+      }
+    }));
+
+    const { data, error } = await this.supabase
+      .from('entities')
+      .upsert(entities, { onConflict: 'profile_id,name,entity_type' });
+
+    if (error) {
+      this.logger.error('Failed to batch upsert calendar events', { error: error.message });
+      return 0;
     }
-    return count;
+
+    return events.length;
   }
 
   private async generateQuestions(events: CalendarEvent[]): Promise<number> {

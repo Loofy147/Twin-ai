@@ -5,14 +5,24 @@ class PatternDetector {
         // Find high-frequency aspects in responses
         // GROUP BY aspect_id in answer_options joined with responses
         const aspectFrequency = db.prepare(`
-            SELECT ao.aspect_id, q.primary_dimension_id, COUNT(*) as frequency, SUM(ao.weight) as total_strength
+            SELECT
+                ao.aspect_id,
+                q.primary_dimension_id,
+                COUNT(*) as frequency,
+                SUM(ao.weight) as total_strength
             FROM responses r
             JOIN answer_options ao ON r.answer_option_id = ao.id
             JOIN questions q ON r.question_id = q.id
-            WHERE r.profile_id = ? AND r.response_type = 'selected'
-            GROUP BY ao.aspect_id
+            WHERE r.profile_id = ?
+              AND r.response_type = 'selected'
+              AND ao.aspect_id IS NOT NULL
+            GROUP BY ao.aspect_id, q.primary_dimension_id
             HAVING frequency >= 3
         `).all(profileId);
+
+        if (!aspectFrequency || aspectFrequency.length === 0) {
+            return 0;
+        }
 
         // BOLT OPTIMIZATION: Prepare statement once outside the loop
         const insertStmt = db.prepare(`
