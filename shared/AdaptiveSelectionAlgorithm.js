@@ -40,12 +40,18 @@ class AdaptiveSelectionAlgorithm {
         const totalResponses = Object.values(coverageMap).reduce((a, b) => a + b, 0);
         const targetDifficulty = Math.min(5, Math.floor(totalResponses / 20) + 1);
 
+        // BOLT OPTIMIZATION: Pre-calculate coverage scores for all dimensions to avoid redundant divisions in the loop
+        const dimensionCoverageScores = {};
+        for (const dimId in coverageMap) {
+            dimensionCoverageScores[dimId] = (1.0 / (coverageMap[dimId] + 1)) * 0.4;
+        }
+
         const scoredQuestions = candidates.map(q => {
             let score = 0.0;
 
             // Factor 1: Coverage - Unexplored dimensions get priority
-            const dimensionResponses = coverageMap[q.primary_dimension_id] || 0;
-            score += (1.0 / (dimensionResponses + 1)) * 0.4;
+            // O(1) lookup instead of division
+            score += dimensionCoverageScores[q.primary_dimension_id] || 0.4;
 
             // Factor 2: Trade-off Prioritization
             // If dimension confidence is low, prioritize trade-offs to force choices

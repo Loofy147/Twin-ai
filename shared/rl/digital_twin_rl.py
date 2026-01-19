@@ -104,15 +104,20 @@ class PersonalLifeEnv(gym.Env):
         self.state = ScenarioManager.get_scenario(scenario_type, self.user_data)
         self.current_scenario = scenario_type
 
+        # BOLT OPTIMIZATION: Initialize cached observation metrics
+        self.cached_relationship_avg = np.mean([r['strength'] for r in self.state['relationships']]) if self.state['relationships'] else 0.5
+        self.cached_project_progress = np.mean([p['progress'] for p in self.state['projects']]) if self.state['projects'] else 0.0
+
         return self._get_obs(), {'scenario': scenario_type}
 
     def _get_obs(self):
+        # BOLT OPTIMIZATION: Use cached values to avoid O(N) list traversals in every observation
         return {
             'temporal': np.array([self.state['hour']/24, self.state['day_of_week']/7, 1.0], dtype=np.float32),
             'personal': np.array([self.state['energy'], self.state['cognitive_load'], 0.7, 0.8], dtype=np.float32),
             'resources': np.array([self.state['time_available']/1440, 1.0, self.state['energy']], dtype=np.float32),
-            'relationship_avg': np.array([np.mean([r['strength'] for r in self.state['relationships']]) if self.state['relationships'] else 0.5], dtype=np.float32),
-            'project_progress': np.array([np.mean([p['progress'] for p in self.state['projects']]) if self.state['projects'] else 0.0], dtype=np.float32)
+            'relationship_avg': np.array([self.cached_relationship_avg], dtype=np.float32),
+            'project_progress': np.array([self.cached_project_progress], dtype=np.float32)
         }
 
     def step(self, action):
@@ -170,7 +175,12 @@ class PersonalLifeEnv(gym.Env):
 
         if action_type == 'work_on_project' and self.state['projects']:
             idx = target_idx % len(self.state['projects'])
-            self.state['projects'][idx]['progress'] += (duration / 120) * (intensity / 5)
+            progress_delta = (duration / 120) * (intensity / 5)
+            self.state['projects'][idx]['progress'] += progress_delta
+
+            # BOLT OPTIMIZATION: Incremental mean update
+            self.cached_project_progress += progress_delta / len(self.state['projects'])
+
             self.state['energy'] -= 0.1 * (intensity / 5)
             self.state['cognitive_load'] += 0.1 * (intensity / 5)
 
@@ -180,7 +190,12 @@ class PersonalLifeEnv(gym.Env):
 
         elif action_type == 'call_person' and self.state['relationships']:
             idx = target_idx % len(self.state['relationships'])
-            self.state['relationships'][idx]['strength'] += 0.05
+            strength_delta = 0.05
+            self.state['relationships'][idx]['strength'] += strength_delta
+
+            # BOLT OPTIMIZATION: Incremental mean update
+            self.cached_relationship_avg += strength_delta / len(self.state['relationships'])
+
             self.state['relationships'][idx]['days_since_contact'] = 0
             self.state['energy'] -= 0.05
 
