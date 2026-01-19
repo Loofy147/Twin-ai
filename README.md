@@ -21,6 +21,8 @@ Explore our detailed documentation in the `docs/` directory:
 *   [**Integrations**](./docs/INTEGRATIONS.md): Mobile and Web integration strategies.
 *   [**Setup & Development**](./docs/SETUP.md): How to install, seed, and test the system.
 *   [**Deployment Guide**](./docs/DEPLOYMENT.md): How to deploy to cloud environments.
+*   [**Pre-Launch Report**](./docs/PRE_LAUNCH_REPORT.md): Security and implementation status.
+*   [**Launch Checklist**](./docs/LAUNCH_CHECKLIST.md): Steps to production.
 
 ## Getting Started
 

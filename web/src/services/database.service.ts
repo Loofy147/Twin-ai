@@ -323,6 +323,29 @@ class DatabaseService {
   }
 
   /**
+   * Get dynamic metrics for a user
+   */
+  async getUserMetrics(profileId: string): Promise<any> {
+    const timer = logger.startTimer('db_get_metrics');
+
+    const result = await this.withRetry(
+      async () => {
+        const { data, error } = await supabase.rpc('get_user_metrics', {
+          profile_id_param: profileId
+        });
+
+        if (error) throw error;
+        return data;
+      },
+      'getUserMetrics',
+      { profile_id: profileId }
+    );
+
+    timer();
+    return result;
+  }
+
+  /**
    * Get analytics data with aggregations
    */
   async getAnalytics(profileId: string, days: number = 30): Promise<any[]> {

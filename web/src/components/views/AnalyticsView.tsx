@@ -191,7 +191,7 @@ const DimensionBreakdownItem = ({ dimension }: any) => {
 };
 
 export const AnalyticsView: React.FC = () => {
-  const { analyticsData, loading } = useAnalytics();
+  const { analyticsData, metrics, loading } = useAnalytics();
   const [timeframe, setTimeframe] = useState('week');
 
   const weeklyData = useMemo(() => [
@@ -234,6 +234,7 @@ export const AnalyticsView: React.FC = () => {
               <button
                 key={tf}
                 onClick={() => setTimeframe(tf)}
+                aria-label={`View analytics by ${tf}`}
                 className={`px-4 py-2 rounded-lg font-medium transition-all ${
                   timeframe === tf
                     ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
@@ -247,12 +248,42 @@ export const AnalyticsView: React.FC = () => {
         </div>
 
         {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-          <MetricCard icon={Hash} label="Total Questions" value="487" trend="+12%" color="purple" />
-          <MetricCard icon={Percent} label="Completion Rate" value="94%" trend="+3%" color="pink" />
-          <MetricCard icon={Target} label="Avg Confidence" value="84%" trend="+5%" color="cyan" />
-          <MetricCard icon={Flame} label="Current Streak" value="7 days" trend="🔥" color="orange" />
-          <MetricCard icon={Trophy} label="XP Earned" value="2,450" trend="+150" color="yellow" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+          <MetricCard
+            icon={Hash}
+            label="Total Questions"
+            value={metrics?.total_questions || '0'}
+            trend="+12%"
+            color="purple"
+          />
+          <MetricCard
+            icon={Percent}
+            label="Completion Rate"
+            value={`${metrics?.completion_rate || 0}%`}
+            trend="+3%"
+            color="pink"
+          />
+          <MetricCard
+            icon={Target}
+            label="Avg Confidence"
+            value={`${metrics?.avg_confidence || 0}%`}
+            trend="+5%"
+            color="cyan"
+          />
+          <MetricCard
+            icon={Flame}
+            label="Current Streak"
+            value={`${metrics?.streak || 0} days`}
+            trend="🔥"
+            color="orange"
+          />
+          <MetricCard
+            icon={Trophy}
+            label="XP Earned"
+            value={metrics?.xp?.toLocaleString() || '0'}
+            trend="+150"
+            color="yellow"
+          />
         </div>
 
         {/* Charts Row */}
