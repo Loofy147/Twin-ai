@@ -14,24 +14,31 @@ class PatternDetector {
             HAVING frequency >= 3
         `).all(profileId);
 
-        for (const af of aspectFrequency) {
-            if (!af.aspect_id) continue;
+        // BOLT OPTIMIZATION: Prepare statement once outside the loop
+        const insertStmt = db.prepare(`
+            INSERT INTO patterns (profile_id, pattern_type, dimension_id, aspect_id, confidence, strength, evidence_count, last_updated)
+            VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(profile_id, dimension_id, aspect_id) WHERE dimension_id IS NOT NULL AND aspect_id IS NOT NULL
+            DO UPDATE SET
+                confidence = excluded.confidence,
+                strength = excluded.strength,
+                evidence_count = excluded.evidence_count,
+                last_updated = CURRENT_TIMESTAMP
+        `);
 
-            const confidence = Math.min(1.0, af.frequency / 10.0);
-            const strength = af.total_strength / af.frequency;
+        // BOLT OPTIMIZATION: Wrap in a transaction for synchronous disk write efficiency
+        const runUpdates = db.transaction((freqs) => {
+            for (const af of freqs) {
+                if (!af.aspect_id) continue;
 
-            // Insert or update pattern - matching the new partial unique index
-            db.prepare(`
-                INSERT INTO patterns (profile_id, pattern_type, dimension_id, aspect_id, confidence, strength, evidence_count, last_updated)
-                VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                ON CONFLICT(profile_id, dimension_id, aspect_id) WHERE dimension_id IS NOT NULL AND aspect_id IS NOT NULL
-                DO UPDATE SET
-                    confidence = excluded.confidence,
-                    strength = excluded.strength,
-                    evidence_count = excluded.evidence_count,
-                    last_updated = CURRENT_TIMESTAMP
-            `).run(profileId, 'preference', af.primary_dimension_id, af.aspect_id, confidence, strength, af.frequency);
-        }
+                const confidence = Math.min(1.0, af.frequency / 10.0);
+                const strength = af.total_strength / af.frequency;
+
+                insertStmt.run(profileId, 'preference', af.primary_dimension_id, af.aspect_id, confidence, strength, af.frequency);
+            }
+        });
+
+        runUpdates(aspectFrequency);
 
         // Detect consistency (or lack thereof)
         // This is a simplified version
