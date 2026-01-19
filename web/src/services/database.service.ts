@@ -213,6 +213,8 @@ class DatabaseService {
 
   /**
    * Get questions with pagination and filtering
+   * BOLT OPTIMIZATION: Uses a server-side RPC to handle "not answered" logic,
+   * avoiding huge payload of IDs in the client-side query.
    */
   async getQuestions(options: {
     limit?: number;
@@ -228,6 +230,21 @@ class DatabaseService {
     try {
       const result = await this.withRetry(
         async () => {
+          // Use RPC if we need to exclude answered questions
+          if (excludeAnswered && profileId) {
+            const { data, error } = await supabase.rpc('get_unanswered_questions', {
+              p_profile_id: profileId,
+              p_limit: limit,
+              p_offset: offset,
+              p_dimension_id: dimensionId,
+              p_difficulty: difficulty
+            });
+
+            if (error) throw error;
+            return { data: (data || []) as Question[], count: -1 }; // count is hard to get with LIMIT in RPC
+          }
+
+          // Fallback to standard query
           let query = supabase
             .from('questions')
             .select(`
@@ -236,39 +253,12 @@ class DatabaseService {
             `, { count: 'exact' })
             .eq('active', true);
 
-          // Apply filters
-          if (difficulty) {
-            query = query.eq('difficulty_level', difficulty);
-          }
-          if (dimensionId) {
-            query = query.eq('primary_dimension_id', dimensionId);
-          }
-
-          // BOLT OPTIMIZATION: Use in-memory cache for answered questions to avoid fetching them every time
-          if (excludeAnswered && profileId) {
-            let answeredSet = this.answeredQuestionsCache.get(profileId);
-
-            if (!answeredSet) {
-              const { data: answered } = await supabase
-                .from('responses')
-                .select('question_id')
-                .eq('profile_id', profileId);
-
-              answeredSet = new Set((answered || []).map(r => r.question_id));
-              this.answeredQuestionsCache.set(profileId, answeredSet);
-            }
-
-            if (answeredSet.size > 0) {
-              const answeredIds = Array.from(answeredSet);
-              // Note: For very large lists, consider moving this logic to a Postgres function
-              query = query.not('id', 'in', `(${answeredIds.join(',')})`);
-            }
-          }
+          if (difficulty) query = query.eq('difficulty_level', difficulty);
+          if (dimensionId) query = query.eq('primary_dimension_id', dimensionId);
 
           query = query.range(offset, offset + limit - 1);
 
           const { data, error, count } = await query;
-
           if (error) throw error;
           return { data: (data || []) as Question[], count: count || 0 };
         },
@@ -278,9 +268,6 @@ class DatabaseService {
 
       logger.info('Questions fetched', {
         count: result.data.length,
-        total: result.count,
-        limit,
-        offset,
         duration_ms: timer()
       });
 
@@ -378,28 +365,20 @@ class DatabaseService {
 
   /**
    * Get analytics data with aggregations
+   * BOLT OPTIMIZATION: Uses a bundled RPC to get all metrics in one call
    */
-  async getAnalytics(profileId: string, days: number = 30): Promise<any[]> {
+  async getAnalytics(profileId: string, days: number = 30): Promise<any> {
     const timer = logger.startTimer('db_get_analytics');
 
     const result = await this.withRetry(
       async () => {
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - days);
-
-        const { data, error } = await supabase
-          .from('responses')
-          .select(`
-            *,
-            question:questions(primary_dimension_id, difficulty_level),
-            answer:answer_options(aspect_id, weight)
-          `)
-          .eq('profile_id', profileId)
-          .gte('created_at', cutoffDate.toISOString())
-          .order('created_at', { ascending: false });
+        const { data, error } = await supabase.rpc('get_comprehensive_analytics', {
+          p_profile_id: profileId,
+          p_days: days
+        });
 
         if (error) throw error;
-        return data || [];
+        return data;
       },
       'getAnalytics',
       { profile_id: profileId, days }

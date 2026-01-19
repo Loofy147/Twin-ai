@@ -191,25 +191,29 @@ const DimensionBreakdownItem = ({ dimension }: any) => {
 };
 
 export const AnalyticsView: React.FC = () => {
+  // BOLT OPTIMIZATION: Now using real-time aggregated data from the comprehensive analytics RPC
   const { analyticsData, metrics, loading } = useAnalytics();
   const [timeframe, setTimeframe] = useState('week');
 
-  const weeklyData = useMemo(() => [
-    { day: 'Mon', responses: 12, patterns: 2, confidence: 78 },
-    { day: 'Tue', responses: 15, patterns: 3, confidence: 82 },
-    { day: 'Wed', responses: 10, patterns: 1, confidence: 79 },
-    { day: 'Thu', responses: 18, patterns: 4, confidence: 85 },
-    { day: 'Fri', responses: 14, patterns: 2, confidence: 88 },
-    { day: 'Sat', responses: 8, patterns: 1, confidence: 86 },
-    { day: 'Sun', responses: 6, patterns: 1, confidence: 84 }
-  ], []);
+  const dimensionBreakdown = useMemo(() => {
+    if (!analyticsData || analyticsData.length === 0) return [];
 
-  const dimensionBreakdown = useMemo(() => [
-    { name: 'Values', percentage: 22, count: 127, color: 'purple' },
-    { name: 'Work Style', percentage: 18, count: 98, color: 'pink' },
-    { name: 'Relationships', percentage: 27, count: 156, color: 'cyan' },
-    { name: 'Learning', percentage: 14, count: 82, color: 'green' },
-    { name: 'Decision Making', percentage: 19, count: 94, color: 'blue' }
+    const colors = ['purple', 'pink', 'cyan', 'green', 'blue'];
+    return analyticsData.map((d: any, i: number) => ({
+      ...d,
+      color: colors[i % colors.length]
+    }));
+  }, [analyticsData]);
+
+  // Fallback data for empty states or loading
+  const weeklyData = useMemo(() => [
+    { day: 'Mon', responses: 0, confidence: 0 },
+    { day: 'Tue', responses: 0, confidence: 0 },
+    { day: 'Wed', responses: 0, confidence: 0 },
+    { day: 'Thu', responses: 0, confidence: 0 },
+    { day: 'Fri', responses: 0, confidence: 0 },
+    { day: 'Sat', responses: 0, confidence: 0 },
+    { day: 'Sun', responses: 0, confidence: 0 }
   ], []);
 
   if (loading) {
