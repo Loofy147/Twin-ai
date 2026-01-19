@@ -119,6 +119,10 @@ class CircuitBreaker {
 class DatabaseService {
   private circuitBreaker = new CircuitBreaker();
   private readonly MAX_RETRIES = 3;
+
+  // BOLT OPTIMIZATION: In-memory caches to reduce redundant DB fetches
+  private profileCache: Map<string, Profile> = new Map();
+  private answeredQuestionsCache: Map<string, Set<number>> = new Map();
   private readonly RETRY_DELAY_MS = 500;
 
   /**
@@ -178,6 +182,12 @@ class DatabaseService {
   async getProfile(profileId: string): Promise<Profile> {
     const timer = logger.startTimer('db_get_profile');
 
+    // BOLT OPTIMIZATION: Return from cache if available
+    if (this.profileCache.has(profileId)) {
+      timer();
+      return this.profileCache.get(profileId)!;
+    }
+
     const result = await this.withRetry(
       async () => {
         const { data, error } = await supabase
@@ -189,7 +199,9 @@ class DatabaseService {
         if (error) throw error;
         if (!data) throw new Error('Profile not found');
 
-        return data as Profile;
+        const profile = data as Profile;
+        this.profileCache.set(profileId, profile);
+        return profile;
       },
       'getProfile',
       { profile_id: profileId }
@@ -232,15 +244,23 @@ class DatabaseService {
             query = query.eq('primary_dimension_id', dimensionId);
           }
 
-          // Exclude answered questions
+          // BOLT OPTIMIZATION: Use in-memory cache for answered questions to avoid fetching them every time
           if (excludeAnswered && profileId) {
-            const { data: answered } = await supabase
-              .from('responses')
-              .select('question_id')
-              .eq('profile_id', profileId);
+            let answeredSet = this.answeredQuestionsCache.get(profileId);
 
-            if (answered && answered.length > 0) {
-              const answeredIds = answered.map(r => r.question_id);
+            if (!answeredSet) {
+              const { data: answered } = await supabase
+                .from('responses')
+                .select('question_id')
+                .eq('profile_id', profileId);
+
+              answeredSet = new Set((answered || []).map(r => r.question_id));
+              this.answeredQuestionsCache.set(profileId, answeredSet);
+            }
+
+            if (answeredSet.size > 0) {
+              const answeredIds = Array.from(answeredSet);
+              // Note: For very large lists, consider moving this logic to a Postgres function
               query = query.not('id', 'in', `(${answeredIds.join(',')})`);
             }
           }
@@ -304,6 +324,17 @@ class DatabaseService {
             error: profileError.message
           });
           // Don't throw - response was saved successfully
+        }
+
+        // BOLT OPTIMIZATION: Update in-memory caches
+        const answeredSet = this.answeredQuestionsCache.get(response.profile_id);
+        if (answeredSet) {
+          answeredSet.add(response.question_id);
+        }
+
+        const cachedProfile = this.profileCache.get(response.profile_id);
+        if (cachedProfile) {
+          cachedProfile.total_responses++;
         }
 
         logger.info('Response submitted', {

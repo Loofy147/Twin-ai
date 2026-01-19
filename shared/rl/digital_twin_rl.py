@@ -59,6 +59,11 @@ class PersonalLifeEnv(gym.Env):
         self.preferences = user_preferences
         self.db = db_connection
 
+        # BOLT OPTIMIZATION: Cache patterns at initialization to avoid per-step DB queries
+        self.pattern_cache = {}
+        if self.db:
+            self._prime_pattern_cache()
+
         # Define action space
         # Actions: [action_type, target_id, duration, intensity/depth]
         self.action_types = [
@@ -221,6 +226,21 @@ class PersonalLifeEnv(gym.Env):
 
         return reward
 
+    def _prime_pattern_cache(self):
+        """Fetch all patterns for the user once."""
+        try:
+            cursor = self.db.cursor()
+            cursor.execute("""
+                SELECT a.code, p.strength, p.confidence
+                FROM patterns p
+                JOIN aspects a ON p.aspect_id = a.id
+                WHERE p.profile_id = ?
+            """, (self.user_data['profile_id'],))
+            for code, strength, confidence in cursor.fetchall():
+                self.pattern_cache[code] = (strength, confidence)
+        except Exception:
+            pass
+
     def _calculate_value_alignment(self, action_type):
         """
         Calculate reward based on alignment with learned patterns from the database.
@@ -241,21 +261,10 @@ class PersonalLifeEnv(gym.Env):
         if not aspect_code:
             return 0.0
 
-        # Attempt to get the pattern strength and confidence for this aspect
-        try:
-            cursor = self.db.cursor()
-            cursor.execute("""
-                SELECT strength, confidence FROM patterns p
-                JOIN aspects a ON p.aspect_id = a.id
-                WHERE a.code = ? AND p.profile_id = ?
-            """, (aspect_code, self.user_data['profile_id']))
-            row = cursor.fetchone()
-            if row:
-                strength, confidence = row
-                # Weight strength by confidence
-                return float(strength) * float(confidence)
-        except Exception:
-            pass
+        # BOLT OPTIMIZATION: Use cached patterns if available
+        if aspect_code in self.pattern_cache:
+            strength, confidence = self.pattern_cache[aspect_code]
+            return float(strength) * float(confidence)
 
         # Fallback to default values if no pattern exists yet
         value_scores = {
