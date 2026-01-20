@@ -94,40 +94,54 @@ export class GoogleDriveIntegration {
   }
 
   private async storeFiles(files: DriveFile[]): Promise<number> {
-    let count = 0;
-    for (const file of files) {
-      const { error } = await this.supabase
-        .from('entities')
-        .upsert({
-          profile_id: this.profileId,
-          entity_type: 'file',
-          name: file.name || 'Untitled',
-          metadata: {
-            source: 'google_drive',
-            source_id: file.id,
-            mimeType: file.mimeType,
-            lastViewed: file.viewedByMeTime
-          }
-        }, { onConflict: 'profile_id,name,entity_type' });
-      if (!error) count++;
+    if (files.length === 0) return 0;
+
+    // BOLT OPTIMIZATION: Use batch upsert to reduce network roundtrips from O(N) to O(1)
+    const entities = files.map(file => ({
+      profile_id: this.profileId,
+      entity_type: 'file',
+      name: file.name || 'Untitled',
+      metadata: {
+        source: 'google_drive',
+        source_id: file.id,
+        mimeType: file.mimeType,
+        lastViewed: file.viewedByMeTime
+      }
+    }));
+
+    const { error } = await this.supabase
+      .from('entities')
+      .upsert(entities, { onConflict: 'profile_id,name,entity_type' });
+
+    if (error) {
+      this.logger.error('Failed to batch upsert drive files', { error: error.message });
+      return 0;
     }
-    return count;
+
+    return files.length;
   }
 
   private async generateQuestions(files: DriveFile[]): Promise<number> {
-    let count = 0;
     const recentFiles = files.filter(f => f.viewedByMeTime).slice(0, 3);
-    for (const file of recentFiles) {
-      const { error } = await this.supabase.from('questions').insert({
-        text: `You recently worked on "${file.name}". How important is this to your current focus?`,
-        question_type: 'priority',
-        primary_dimension_id: 2,
-        engagement_factor: 1.4,
-        metadata: { source: 'google_drive', file_id: file.id }
-      });
-      if (!error) count++;
+    if (recentFiles.length === 0) return 0;
+
+    // BOLT OPTIMIZATION: Batch insert questions
+    const questions = recentFiles.map(file => ({
+      text: `You recently worked on "${file.name}". How important is this to your current focus?`,
+      question_type: 'priority',
+      primary_dimension_id: 2,
+      engagement_factor: 1.4,
+      metadata: { source: 'google_drive', file_id: file.id }
+    }));
+
+    const { error } = await this.supabase.from('questions').insert(questions);
+
+    if (error) {
+      this.logger.error('Failed to batch insert drive questions', { error: error.message });
+      return 0;
     }
-    return count;
+
+    return recentFiles.length;
   }
 
   async disconnect(): Promise<void> {

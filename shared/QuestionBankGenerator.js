@@ -166,12 +166,14 @@ class QuestionBankGenerator {
 
             // 4. Batch Insert Questions and Options
             for (const q of questions) {
+                const metadataObj = JSON.parse(q.metadata);
+                const options = metadataObj.options;
+
                 const result = insertStmt.run(q.text, q.question_type, q.difficulty_level, q.engagement_factor, q.primary_dimension_id, q.metadata);
                 const questionId = result.lastInsertRowid;
 
-                const metadata = JSON.parse(q.metadata);
-                if (metadata.options) {
-                    metadata.options.forEach((opt, idx) => {
+                if (options) {
+                    options.forEach((opt, idx) => {
                         let aspectId = null;
                         if (opt.aspect && !skipAspects.has(opt.aspect)) {
                             // FAST LOOKUP: O(1) from map instead of O(log N) from DB SELECT

@@ -13,18 +13,23 @@ class ContactsIntegration {
       { givenName: 'John', familyName: 'Smith', company: 'Tech Inc', phoneNumbers: [{ label: 'work', number: '555-4567' }] }
     ];
 
-    for (const contact of contacts) {
-      const fullName = `${contact.givenName} ${contact.familyName}`;
+    // BOLT OPTIMIZATION: Hoist prepare and use transaction for bulk contact sync
+    const insertStmt = db.prepare(`
+      INSERT OR IGNORE INTO entities (entity_type, name, metadata)
+      VALUES (?, ?, ?)
+    `);
 
-      // Store in entities table - Use INSERT OR IGNORE to prevent duplicates
-      db.prepare(`
-        INSERT OR IGNORE INTO entities (entity_type, name, metadata)
-        VALUES (?, ?, ?)
-      `).run('person', fullName, JSON.stringify({
-        company: contact.company,
-        source: 'contacts'
-      }));
-    }
+    const sync = db.transaction((contactsList) => {
+      for (const contact of contactsList) {
+        const fullName = `${contact.givenName} ${contact.familyName}`;
+        insertStmt.run('person', fullName, JSON.stringify({
+          company: contact.company,
+          source: 'contacts'
+        }));
+      }
+    });
+
+    sync(contacts);
 
     return { success: true, count: contacts.length };
   }
@@ -50,13 +55,19 @@ class ContactsIntegration {
       });
     }
 
-    // Store generated questions - Use INSERT OR IGNORE to prevent duplicates
-    for (const q of questions) {
-      db.prepare(`
-        INSERT OR IGNORE INTO questions (text, question_type, primary_dimension_id, metadata)
-        VALUES (?, ?, ?, ?)
-      `).run(q.text, q.question_type, q.primary_dimension_id, q.metadata);
-    }
+    // BOLT OPTIMIZATION: Hoist prepare and use transaction for bulk question generation
+    const insertQuestionStmt = db.prepare(`
+      INSERT OR IGNORE INTO questions (text, question_type, primary_dimension_id, metadata)
+      VALUES (?, ?, ?, ?)
+    `);
+
+    const saveQuestions = db.transaction((qs) => {
+      for (const q of qs) {
+        insertQuestionStmt.run(q.text, q.question_type, q.primary_dimension_id, q.metadata);
+      }
+    });
+
+    saveQuestions(questions);
 
     return questions;
   }

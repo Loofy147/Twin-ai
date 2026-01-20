@@ -15,19 +15,27 @@ class CallHistoryIntegration {
     // Ensure dataset exists
     db.prepare("INSERT OR IGNORE INTO datasets (id, profile_id, name, dataset_type) VALUES (?, ?, ?, ?)").run(1, profileId, 'Call Logs', 'integrated');
 
-    for (const call of calls) {
-      // Find person entity with this phone number (simplified)
-      const person = db.prepare("SELECT id FROM entities WHERE entity_type = 'person' LIMIT 1").get();
+    // BOLT OPTIMIZATION: Hoist prepare and use transaction for bulk call sync
+    const findPersonStmt = db.prepare("SELECT id FROM entities WHERE entity_type = 'person' LIMIT 1");
+    const insertRecordStmt = db.prepare(`
+      INSERT INTO dataset_records (dataset_id, record_data)
+      VALUES (?, ?)
+    `);
 
-      if (person) {
-        // Record interaction in some way or update entity attributes
-        // The schema has dataset_records which can be used for raw logs
-        db.prepare(`
-          INSERT INTO dataset_records (dataset_id, record_data)
-          VALUES (?, ?)
-        `).run(1, JSON.stringify(call));
+    const sync = db.transaction((callsList) => {
+      for (const call of callsList) {
+        // Find person entity with this phone number (simplified)
+        const person = findPersonStmt.get();
+
+        if (person) {
+          // Record interaction in some way or update entity attributes
+          // The schema has dataset_records which can be used for raw logs
+          insertRecordStmt.run(1, JSON.stringify(call));
+        }
       }
-    }
+    });
+
+    sync(calls);
 
     return { success: true, count: calls.length };
   }
@@ -50,12 +58,19 @@ class CallHistoryIntegration {
       })
     });
 
-    for (const q of questions) {
-      db.prepare(`
-        INSERT OR IGNORE INTO questions (text, question_type, primary_dimension_id, metadata)
-        VALUES (?, ?, ?, ?)
-      `).run(q.text, q.question_type, q.primary_dimension_id, q.metadata);
-    }
+    // BOLT OPTIMIZATION: Hoist prepare and use transaction for bulk question generation
+    const insertQuestionStmt = db.prepare(`
+      INSERT OR IGNORE INTO questions (text, question_type, primary_dimension_id, metadata)
+      VALUES (?, ?, ?, ?)
+    `);
+
+    const saveQuestions = db.transaction((qs) => {
+      for (const q of qs) {
+        insertQuestionStmt.run(q.text, q.question_type, q.primary_dimension_id, q.metadata);
+      }
+    });
+
+    saveQuestions(questions);
 
     return questions;
   }

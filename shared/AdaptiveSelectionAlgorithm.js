@@ -27,29 +27,40 @@ class AdaptiveSelectionAlgorithm {
         });
 
         // 3. Get patterns with low confidence (< 0.4)
-        const lowConfidenceDimensions = db.prepare(`
-            SELECT dimension_id FROM patterns
-            WHERE profile_id = ? AND confidence < 0.4
-        `).all(profileId).map(p => p.dimension_id);
+        // BOLT OPTIMIZATION: Use a Set for O(1) lookups inside the candidate loop
+        const lowConfidenceDimensions = new Set(
+            db.prepare(`
+                SELECT dimension_id FROM patterns
+                WHERE profile_id = ? AND confidence < 0.4
+            `).all(profileId).map(p => p.dimension_id)
+        );
 
         // 4. Scoring function
+        // BOLT OPTIMIZATION: Pre-calculate total responses and target difficulty outside the loop
+        const totalResponses = Object.values(coverageMap).reduce((a, b) => a + b, 0);
+        const targetDifficulty = Math.min(5, Math.floor(totalResponses / 20) + 1);
+
+        // BOLT OPTIMIZATION: Pre-calculate coverage scores for all dimensions to avoid redundant divisions in the loop
+        const dimensionCoverageScores = {};
+        for (const dimId in coverageMap) {
+            dimensionCoverageScores[dimId] = (1.0 / (coverageMap[dimId] + 1)) * 0.4;
+        }
+
         const scoredQuestions = candidates.map(q => {
             let score = 0.0;
 
             // Factor 1: Coverage - Unexplored dimensions get priority
-            const dimensionResponses = coverageMap[q.primary_dimension_id] || 0;
-            score += (1.0 / (dimensionResponses + 1)) * 0.4;
+            // O(1) lookup instead of division
+            score += dimensionCoverageScores[q.primary_dimension_id] || 0.4;
 
             // Factor 2: Trade-off Prioritization
             // If dimension confidence is low, prioritize trade-offs to force choices
-            if (q.question_type === 'trade_off' && lowConfidenceDimensions.includes(q.primary_dimension_id)) {
+            if (q.question_type === 'trade_off' && lowConfidenceDimensions.has(q.primary_dimension_id)) {
                 score += 0.5;
             }
 
             // Factor 3: Difficulty Progression
             // As user answers more, increase difficulty
-            const totalResponses = Object.values(coverageMap).reduce((a, b) => a + b, 0);
-            const targetDifficulty = Math.min(5, Math.floor(totalResponses / 20) + 1);
             if (q.difficulty_level === targetDifficulty) {
                 score += 0.2;
             } else if (Math.abs(q.difficulty_level - targetDifficulty) === 1) {

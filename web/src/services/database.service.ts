@@ -119,6 +119,10 @@ class CircuitBreaker {
 class DatabaseService {
   private circuitBreaker = new CircuitBreaker();
   private readonly MAX_RETRIES = 3;
+
+  // BOLT OPTIMIZATION: In-memory caches to reduce redundant DB fetches
+  private profileCache: Map<string, Profile> = new Map();
+  private answeredQuestionsCache: Map<string, Set<number>> = new Map();
   private readonly RETRY_DELAY_MS = 500;
 
   /**
@@ -178,6 +182,12 @@ class DatabaseService {
   async getProfile(profileId: string): Promise<Profile> {
     const timer = logger.startTimer('db_get_profile');
 
+    // BOLT OPTIMIZATION: Return from cache if available
+    if (this.profileCache.has(profileId)) {
+      timer();
+      return this.profileCache.get(profileId)!;
+    }
+
     const result = await this.withRetry(
       async () => {
         const { data, error } = await supabase
@@ -189,7 +199,9 @@ class DatabaseService {
         if (error) throw error;
         if (!data) throw new Error('Profile not found');
 
-        return data as Profile;
+        const profile = data as Profile;
+        this.profileCache.set(profileId, profile);
+        return profile;
       },
       'getProfile',
       { profile_id: profileId }
@@ -201,6 +213,8 @@ class DatabaseService {
 
   /**
    * Get questions with pagination and filtering
+   * BOLT OPTIMIZATION: Uses a server-side RPC to handle "not answered" logic,
+   * avoiding huge payload of IDs in the client-side query.
    */
   async getQuestions(options: {
     limit?: number;
@@ -216,6 +230,21 @@ class DatabaseService {
     try {
       const result = await this.withRetry(
         async () => {
+          // Use RPC if we need to exclude answered questions
+          if (excludeAnswered && profileId) {
+            const { data, error } = await supabase.rpc('get_unanswered_questions', {
+              p_profile_id: profileId,
+              p_limit: limit,
+              p_offset: offset,
+              p_dimension_id: dimensionId,
+              p_difficulty: difficulty
+            });
+
+            if (error) throw error;
+            return { data: (data || []) as Question[], count: -1 }; // count is hard to get with LIMIT in RPC
+          }
+
+          // Fallback to standard query
           let query = supabase
             .from('questions')
             .select(`
@@ -224,31 +253,12 @@ class DatabaseService {
             `, { count: 'exact' })
             .eq('active', true);
 
-          // Apply filters
-          if (difficulty) {
-            query = query.eq('difficulty_level', difficulty);
-          }
-          if (dimensionId) {
-            query = query.eq('primary_dimension_id', dimensionId);
-          }
-
-          // Exclude answered questions
-          if (excludeAnswered && profileId) {
-            const { data: answered } = await supabase
-              .from('responses')
-              .select('question_id')
-              .eq('profile_id', profileId);
-
-            if (answered && answered.length > 0) {
-              const answeredIds = answered.map(r => r.question_id);
-              query = query.not('id', 'in', `(${answeredIds.join(',')})`);
-            }
-          }
+          if (difficulty) query = query.eq('difficulty_level', difficulty);
+          if (dimensionId) query = query.eq('primary_dimension_id', dimensionId);
 
           query = query.range(offset, offset + limit - 1);
 
           const { data, error, count } = await query;
-
           if (error) throw error;
           return { data: (data || []) as Question[], count: count || 0 };
         },
@@ -258,9 +268,6 @@ class DatabaseService {
 
       logger.info('Questions fetched', {
         count: result.data.length,
-        total: result.count,
-        limit,
-        offset,
         duration_ms: timer()
       });
 
@@ -306,6 +313,17 @@ class DatabaseService {
           // Don't throw - response was saved successfully
         }
 
+        // BOLT OPTIMIZATION: Update in-memory caches
+        const answeredSet = this.answeredQuestionsCache.get(response.profile_id);
+        if (answeredSet) {
+          answeredSet.add(response.question_id);
+        }
+
+        const cachedProfile = this.profileCache.get(response.profile_id);
+        if (cachedProfile) {
+          cachedProfile.total_responses++;
+        }
+
         logger.info('Response submitted', {
           profile_id: response.profile_id,
           question_id: response.question_id,
@@ -347,28 +365,20 @@ class DatabaseService {
 
   /**
    * Get analytics data with aggregations
+   * BOLT OPTIMIZATION: Uses a bundled RPC to get all metrics in one call
    */
-  async getAnalytics(profileId: string, days: number = 30): Promise<any[]> {
+  async getAnalytics(profileId: string, days: number = 30): Promise<any> {
     const timer = logger.startTimer('db_get_analytics');
 
     const result = await this.withRetry(
       async () => {
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - days);
-
-        const { data, error } = await supabase
-          .from('responses')
-          .select(`
-            *,
-            question:questions(primary_dimension_id, difficulty_level),
-            answer:answer_options(aspect_id, weight)
-          `)
-          .eq('profile_id', profileId)
-          .gte('created_at', cutoffDate.toISOString())
-          .order('created_at', { ascending: false });
+        const { data, error } = await supabase.rpc('get_comprehensive_analytics', {
+          p_profile_id: profileId,
+          p_days: days
+        });
 
         if (error) throw error;
-        return data || [];
+        return data;
       },
       'getAnalytics',
       { profile_id: profileId, days }

@@ -15,14 +15,18 @@ export const useAnalytics = () => {
 
     try {
       setLoading(true);
-      const [analytics, detectedPatterns, userMetrics] = await Promise.all([
+      // BOLT OPTIMIZATION: Reduced 3 API calls to 2 by using the comprehensive analytics RPC
+      const [analyticsResponse, detectedPatterns] = await Promise.all([
         databaseService.getAnalytics(user.id),
-        databaseService.getPatterns(user.id),
-        databaseService.getUserMetrics(user.id)
+        databaseService.getPatterns(user.id)
       ]);
-      setAnalyticsData(analytics);
+
+      if (analyticsResponse) {
+        setAnalyticsData(analyticsResponse.dimension_breakdown || []);
+        setMetrics(analyticsResponse.metrics);
+      }
+
       setPatterns(detectedPatterns);
-      setMetrics(userMetrics);
       setError(null);
     } catch (err: any) {
       setError(err.message || 'Failed to load analytics');

@@ -244,3 +244,9 @@ CREATE INDEX IF NOT EXISTS idx_entity_attrs_profile ON entity_attributes(profile
 CREATE INDEX IF NOT EXISTS idx_entity_attrs_entity ON entity_attributes(entity_id);
 CREATE INDEX IF NOT EXISTS idx_recommendations_profile ON recommendations(profile_id);
 CREATE INDEX IF NOT EXISTS idx_recommendations_status ON recommendations(status);
+
+-- BOLT OPTIMIZATION: Additional indexes for common joins and filtering
+CREATE INDEX IF NOT EXISTS idx_questions_dimension ON questions(primary_dimension_id);
+CREATE INDEX IF NOT EXISTS idx_answer_options_question ON answer_options(question_id);
+CREATE INDEX IF NOT EXISTS idx_answer_options_aspect ON answer_options(aspect_id);
+CREATE INDEX IF NOT EXISTS idx_aspects_dimension ON aspects(dimension_id);
