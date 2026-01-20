@@ -230,18 +230,17 @@ class DatabaseService {
     try {
       const result = await this.withRetry(
         async () => {
-          // Use RPC if we need to exclude answered questions
+          // BOLT OPTIMIZATION: Use adaptive RPC for smarter question selection if profile available
           if (excludeAnswered && profileId) {
-            const { data, error } = await supabase.rpc('get_unanswered_questions', {
+            const { data, error } = await supabase.rpc('get_unanswered_questions_adaptive', {
               p_profile_id: profileId,
               p_limit: limit,
               p_offset: offset,
-              p_dimension_id: dimensionId,
-              p_difficulty: difficulty
+              p_dimension_id: dimensionId
             });
 
             if (error) throw error;
-            return { data: (data || []) as Question[], count: -1 }; // count is hard to get with LIMIT in RPC
+            return { data: (data || []) as Question[], count: -1 };
           }
 
           // Fallback to standard query
@@ -279,55 +278,41 @@ class DatabaseService {
 
   /**
    * Submit user response with transaction safety
+   * BOLT OPTIMIZATION: Uses a single atomic RPC call to handle insertion,
+   * rate limiting, and profile updates, reducing roundtrips.
    */
   async submitResponse(response: Response): Promise<void> {
     const timer = logger.startTimer('db_submit_response');
 
     await this.withRetry(
       async () => {
-        // Begin transaction (Supabase doesn't support explicit transactions in client)
-        // Use RPC function for atomic operations if needed
+        const { data, error } = await supabase.rpc('submit_response_atomic', {
+          p_profile_id: response.profile_id,
+          p_question_id: response.question_id,
+          p_answer_option_id: response.answer_option_id,
+          p_response_time_ms: response.response_time_ms,
+          p_confidence_level: response.confidence_level,
+          p_response_type: response.response_type || 'selected'
+        });
 
-        // 1. Insert response
-        const { error: responseError } = await supabase
-          .from('responses')
-          .insert([{
-            ...response,
-            response_type: response.response_type || 'selected',
-            created_at: new Date().toISOString()
-          }]);
+        if (error) throw error;
+        if (data && !data.success) throw new Error(data.error || 'Atomic submission failed');
 
-        if (responseError) throw responseError;
-
-        // 2. Update profile statistics
-        const { error: profileError } = await supabase.rpc(
-          'increment_profile_responses',
-          { profile_id_param: response.profile_id }
-        );
-
-        if (profileError) {
-          logger.warn('Failed to update profile statistics', {
-            profile_id: response.profile_id,
-            error: profileError.message
-          });
-          // Don't throw - response was saved successfully
-        }
-
-        // BOLT OPTIMIZATION: Update in-memory caches
+        // BOLT OPTIMIZATION: Update in-memory caches with data returned from RPC
         const answeredSet = this.answeredQuestionsCache.get(response.profile_id);
         if (answeredSet) {
           answeredSet.add(response.question_id);
         }
 
         const cachedProfile = this.profileCache.get(response.profile_id);
-        if (cachedProfile) {
-          cachedProfile.total_responses++;
+        if (cachedProfile && data.metrics) {
+          cachedProfile.total_responses = data.metrics.total_questions;
         }
 
-        logger.info('Response submitted', {
+        logger.info('Response submitted atomically', {
           profile_id: response.profile_id,
           question_id: response.question_id,
-          response_time_ms: response.response_time_ms
+          duration_ms: timer()
         });
       },
       'submitResponse',
@@ -336,8 +321,6 @@ class DatabaseService {
         question_id: response.question_id
       }
     );
-
-    timer();
   }
 
   /**

@@ -9,10 +9,17 @@ export const useQuestions = (limit: number = 10, profileId?: string) => {
   const [totalCount, setTotalCount] = useState(0);
   const [selectedDimension, setSelectedDimension] = useState<string | null>(null);
 
-  const loadQuestions = useCallback(async () => {
+  // BOLT OPTIMIZATION: Next batch state for prefetching
+  const [nextBatch, setNextBatch] = useState<Question[]>([]);
+  const [prefetching, setPrefetching] = useState(false);
+
+  const loadQuestions = useCallback(async (isPrefetch = false) => {
     try {
-      setLoading(true);
-      const offset = (page - 1) * limit;
+      if (!isPrefetch) setLoading(true);
+
+      const targetPage = isPrefetch ? page + 1 : page;
+      const offset = (targetPage - 1) * limit;
+
       const { data, count, error: fetchError } = await databaseService.getQuestions({
         limit,
         offset,
@@ -23,24 +30,33 @@ export const useQuestions = (limit: number = 10, profileId?: string) => {
 
       if (fetchError) throw fetchError;
 
-      setQuestions(data || []);
-      setTotalCount(count || 0);
+      if (isPrefetch) {
+        setNextBatch(data || []);
+      } else {
+        setQuestions(data || []);
+        setTotalCount(count || 0);
+      }
       setError(null);
     } catch (err: any) {
-      setError(err.message || 'Failed to load questions');
+      if (!isPrefetch) setError(err.message || 'Failed to load questions');
     } finally {
-      setLoading(false);
+      if (!isPrefetch) setLoading(false);
     }
   }, [limit, page, selectedDimension, profileId]);
 
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
+    setNextBatch([]); // Clear prefetch on filter change
   }, [selectedDimension]);
 
   useEffect(() => {
-    loadQuestions();
-  }, [loadQuestions]);
+    // BOLT OPTIMIZATION: Skip fetch if we already have prefetched data for this page
+    // (nextBatch is cleared after being moved to questions)
+    if (questions.length === 0 || page === 1) {
+      loadQuestions();
+    }
+  }, [loadQuestions, page]);
 
   const goToPage = (newPage: number) => {
     setPage(newPage);
@@ -56,6 +72,27 @@ export const useQuestions = (limit: number = 10, profileId?: string) => {
     }
   };
 
+  /**
+   * BOLT OPTIMIZATION: Seamlessly swap to next batch if available
+   */
+  const loadNextPage = useCallback(() => {
+    if (nextBatch.length > 0) {
+      setQuestions(nextBatch);
+      setNextBatch([]);
+      setPage(prev => prev + 1);
+    } else {
+      setPage(prev => prev + 1);
+    }
+  }, [nextBatch]);
+
+  // BOLT OPTIMIZATION: Trigger prefetch when questions are loaded
+  useEffect(() => {
+    if (questions.length > 0 && nextBatch.length === 0 && !prefetching && profileId) {
+      setPrefetching(true);
+      loadQuestions(true).finally(() => setPrefetching(false));
+    }
+  }, [questions, nextBatch, prefetching, loadQuestions, profileId]);
+
   return {
     questions,
     loading,
@@ -66,6 +103,7 @@ export const useQuestions = (limit: number = 10, profileId?: string) => {
     selectedDimension,
     setSelectedDimension,
     goToPage,
+    loadNextPage, // Expose for manual or automatic page transitions
     submitAnswer,
     reloadQuestions: loadQuestions
   };

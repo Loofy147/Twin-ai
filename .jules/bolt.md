@@ -9,3 +9,7 @@
 ## 2025-05-24 - [Python RL State Copying]
 **Learning:** `copy.deepcopy` is extremely slow in Python RL environments where state snapshots are taken every step. For simple nested structures (like a list of flat dictionaries), manual shallow copying of the first level is ~30x faster and sufficient if the nested dicts contain only primitives.
 **Action:** Use list/dict comprehensions with `.copy()` for one-level nested data instead of `deepcopy` in performance-critical paths.
+
+## 2026-01-22 - [Atomic RPC & Client Prefetching]
+**Learning:** Sequential database operations from the client (e.g., insert response -> update profile) cause multiple network roundtrips and potential data inconsistency if one fails. Additionally, synchronous batch loading of questions causes a visible pause for users when they finish a page.
+**Action:** Bundle related database operations into a single PostgreSQL RPC to reduce roundtrips and ensure atomicity. Implement background prefetching in the frontend hooks to load the next data batch before the user reaches the end of the current set.
