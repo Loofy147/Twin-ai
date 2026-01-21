@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { databaseService, Question, Response } from '../services/database.service';
 
 export const useQuestions = (limit: number = 10, profileId?: string) => {
@@ -56,13 +56,16 @@ export const useQuestions = (limit: number = 10, profileId?: string) => {
     }
   };
 
+  // BOLT OPTIMIZATION: Memoized totalPages to avoid redundant division and rounding on every render
+  const totalPages = useMemo(() => Math.ceil(totalCount / limit), [totalCount, limit]);
+
   return {
     questions,
     loading,
     error,
     page,
     totalCount,
-    totalPages: Math.ceil(totalCount / limit),
+    totalPages,
     selectedDimension,
     setSelectedDimension,
     goToPage,

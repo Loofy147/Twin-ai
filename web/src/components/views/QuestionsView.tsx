@@ -6,6 +6,36 @@ import { Toast } from '../common/Toast';
 import { useQuestions } from '../../hooks/useQuestions';
 import { useAuth } from '../../contexts/AuthContext';
 
+// BOLT OPTIMIZATION: Hoisted mockQuestions outside the component to avoid recreation on every render
+const MOCK_QUESTIONS = [
+  {
+    id: 1,
+    text: "You have 2 hours of free time on Saturday morning. You:",
+    type: "choice",
+    dimension: "Time Management",
+    difficulty: 2,
+    options: [
+      { id: 'A', text: "Plan a structured learning session", weight: 1.0, aspect: "planning", icon: Target },
+      { id: 'B', text: "See what feels right in the moment", weight: 0.8, aspect: "spontaneity", icon: Zap },
+      { id: 'C', text: "Catch up on rest and relaxation", weight: 0.6, aspect: "flexibility", icon: Heart },
+      { id: 'D', text: "Don't have a preference", weight: 0, aspect: "indifferent", icon: Eye }
+    ]
+  },
+  {
+    id: 2,
+    text: "A colleague takes credit for your idea in a meeting. You:",
+    type: "scenario",
+    dimension: "Communication",
+    difficulty: 3,
+    options: [
+      { id: 'A', text: "Address it directly right there", weight: 1.0, aspect: "direct", icon: MessageSquare },
+      { id: 'B', text: "Bring it up privately afterward", weight: 0.8, aspect: "diplomatic", icon: Shield },
+      { id: 'C', text: "Let it go this time", weight: 0.4, aspect: "passive", icon: Heart },
+      { id: 'D', text: "Don't care about credit", weight: 0, aspect: "indifferent", icon: Eye }
+    ]
+  }
+];
+
 export const QuestionsView: React.FC = () => {
   const { user } = useAuth();
   const { questions: dbQuestions, loading, error, submitAnswer } = useQuestions(10, user?.id);
@@ -16,36 +46,7 @@ export const QuestionsView: React.FC = () => {
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error' | 'info' | 'warning'} | null>(null);
   const dailyGoal = 10;
 
-  const mockQuestions = [
-    {
-      id: 1,
-      text: "You have 2 hours of free time on Saturday morning. You:",
-      type: "choice",
-      dimension: "Time Management",
-      difficulty: 2,
-      options: [
-        { id: 'A', text: "Plan a structured learning session", weight: 1.0, aspect: "planning", icon: Target },
-        { id: 'B', text: "See what feels right in the moment", weight: 0.8, aspect: "spontaneity", icon: Zap },
-        { id: 'C', text: "Catch up on rest and relaxation", weight: 0.6, aspect: "flexibility", icon: Heart },
-        { id: 'D', text: "Don't have a preference", weight: 0, aspect: "indifferent", icon: Eye }
-      ]
-    },
-    {
-      id: 2,
-      text: "A colleague takes credit for your idea in a meeting. You:",
-      type: "scenario",
-      dimension: "Communication",
-      difficulty: 3,
-      options: [
-        { id: 'A', text: "Address it directly right there", weight: 1.0, aspect: "direct", icon: MessageSquare },
-        { id: 'B', text: "Bring it up privately afterward", weight: 0.8, aspect: "diplomatic", icon: Shield },
-        { id: 'C', text: "Let it go this time", weight: 0.4, aspect: "passive", icon: Heart },
-        { id: 'D', text: "Don't care about credit", weight: 0, aspect: "indifferent", icon: Eye }
-      ]
-    }
-  ];
-
-  const questions = dbQuestions.length > 0 ? dbQuestions : mockQuestions;
+  const questions = dbQuestions.length > 0 ? dbQuestions : MOCK_QUESTIONS;
 
   const handleAnswer = async (option: any) => {
     if (!option) return;

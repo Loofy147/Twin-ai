@@ -1,21 +1,39 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, memo } from 'react';
 import {
   Hash, Percent, Target, Flame, Trophy, Loader2
 } from 'lucide-react';
 import { useAnalytics } from '../../hooks/useAnalytics';
 
-const MetricCard = ({ icon: Icon, label, value, trend, color }: any) => {
-  const colorMap: any = {
-    purple: 'from-purple-500 to-pink-500',
-    pink: 'from-pink-500 to-rose-500',
-    cyan: 'from-cyan-500 to-blue-500',
-    orange: 'from-orange-500 to-red-500',
-    yellow: 'from-yellow-500 to-orange-500'
-  };
+// BOLT OPTIMIZATION: Hoisted constant color configurations to avoid object creation on every render
+const METRIC_COLOR_MAP: Record<string, string> = {
+  purple: 'from-purple-500 to-pink-500',
+  pink: 'from-pink-500 to-rose-500',
+  cyan: 'from-cyan-500 to-blue-500',
+  orange: 'from-orange-500 to-red-500',
+  yellow: 'from-yellow-500 to-orange-500'
+};
 
+const DONUT_COLOR_MAP: Record<string, string> = {
+  purple: '#a855f7',
+  pink: '#ec4899',
+  cyan: '#06b6d4',
+  green: '#10b981',
+  blue: '#3b82f6'
+};
+
+const BREAKDOWN_COLOR_MAP: Record<string, string> = {
+  purple: 'from-purple-500 to-pink-500',
+  pink: 'from-pink-500 to-rose-500',
+  cyan: 'from-cyan-500 to-blue-500',
+  green: 'from-green-500 to-emerald-500',
+  blue: 'from-blue-500 to-cyan-500'
+};
+
+// BOLT OPTIMIZATION: Memoized components to prevent unnecessary re-renders when parent state (like 'timeframe') changes
+const MetricCard = memo(({ icon: Icon, label, value, trend, color }: any) => {
   return (
     <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-lg border border-slate-700/50 rounded-xl p-6 hover:scale-105 transition-all">
-      <div className={`w-10 h-10 bg-gradient-to-br ${colorMap[color]} rounded-lg flex items-center justify-center mb-3`}>
+      <div className={`w-10 h-10 bg-gradient-to-br ${METRIC_COLOR_MAP[color]} rounded-lg flex items-center justify-center mb-3`}>
         <Icon className="w-5 h-5 text-white" />
       </div>
       <div className="text-slate-400 text-xs mb-1">{label}</div>
@@ -23,9 +41,9 @@ const MetricCard = ({ icon: Icon, label, value, trend, color }: any) => {
       <div className="text-xs text-green-400">{trend}</div>
     </div>
   );
-};
+});
 
-const BarChart = ({ data }: any) => {
+const BarChart = memo(({ data }: any) => {
   const maxValue = Math.max(...data.map((d: any) => d.responses));
 
   return (
@@ -35,7 +53,7 @@ const BarChart = ({ data }: any) => {
           <div className="w-full flex items-end justify-center mb-2" style={{ height: '200px' }}>
             <div
               className="w-full bg-gradient-to-t from-purple-500 to-pink-500 rounded-t-lg transition-all duration-500 hover:from-purple-400 hover:to-pink-400 cursor-pointer relative group"
-              style={{ height: `${(item.responses / maxValue) * 100}%` }}
+              style={{ height: `${(item.responses / (maxValue || 1)) * 100}%` }}
             >
               <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 px-2 py-1 rounded text-xs text-white whitespace-nowrap">
                 {item.responses} responses
@@ -47,12 +65,12 @@ const BarChart = ({ data }: any) => {
       ))}
     </div>
   );
-};
+});
 
-const LineChart = ({ data }: any) => {
+const LineChart = memo(({ data }: any) => {
   const maxValue = Math.max(...data.map((d: any) => d.confidence));
   const minValue = Math.min(...data.map((d: any) => d.confidence));
-  const range = maxValue - minValue;
+  const range = (maxValue - minValue) || 1;
 
   const points = data.map((item: any, idx: number) => {
     const x = (idx / (data.length - 1)) * 100;
@@ -99,19 +117,11 @@ const LineChart = ({ data }: any) => {
       </div>
     </div>
   );
-};
+});
 
-const DonutChart = ({ data }: any) => {
+const DonutChart = memo(({ data }: any) => {
   const total = data.reduce((sum: number, d: any) => sum + d.percentage, 0);
   let currentAngle = -90;
-
-  const colorMap: any = {
-    purple: '#a855f7',
-    pink: '#ec4899',
-    cyan: '#06b6d4',
-    green: '#10b981',
-    blue: '#3b82f6'
-  };
 
   return (
     <div className="relative">
@@ -143,7 +153,7 @@ const DonutChart = ({ data }: any) => {
             <path
               key={idx}
               d={pathData}
-              fill={colorMap[item.color]}
+              fill={DONUT_COLOR_MAP[item.color]}
               className="hover:opacity-80 transition-opacity cursor-pointer"
             />
           );
@@ -158,20 +168,12 @@ const DonutChart = ({ data }: any) => {
       </svg>
     </div>
   );
-};
+});
 
-const DimensionBreakdownItem = ({ dimension }: any) => {
-  const colorMap: any = {
-    purple: 'from-purple-500 to-pink-500',
-    pink: 'from-pink-500 to-rose-500',
-    cyan: 'from-cyan-500 to-blue-500',
-    green: 'from-green-500 to-emerald-500',
-    blue: 'from-blue-500 to-cyan-500'
-  };
-
+const DimensionBreakdownItem = memo(({ dimension }: any) => {
   return (
     <div className="flex items-center space-x-4 p-4 bg-slate-800/30 rounded-lg hover:bg-slate-800/50 transition-all">
-      <div className={`w-12 h-12 bg-gradient-to-br ${colorMap[dimension.color]} rounded-lg flex items-center justify-center font-bold text-white`}>
+      <div className={`w-12 h-12 bg-gradient-to-br ${BREAKDOWN_COLOR_MAP[dimension.color]} rounded-lg flex items-center justify-center font-bold text-white`}>
         {dimension.percentage}%
       </div>
       <div className="flex-1">
@@ -181,14 +183,14 @@ const DimensionBreakdownItem = ({ dimension }: any) => {
         </div>
         <div className="w-full bg-slate-700/30 rounded-full h-2">
           <div
-            className={`bg-gradient-to-r ${colorMap[dimension.color]} h-2 rounded-full transition-all duration-500`}
+            className={`bg-gradient-to-r ${BREAKDOWN_COLOR_MAP[dimension.color]} h-2 rounded-full transition-all duration-500`}
             style={{ width: `${dimension.percentage}%` }}
           ></div>
         </div>
       </div>
     </div>
   );
-};
+});
 
 export const AnalyticsView: React.FC = () => {
   // BOLT OPTIMIZATION: Now using real-time aggregated data from the comprehensive analytics RPC
