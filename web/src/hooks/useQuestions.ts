@@ -7,7 +7,14 @@ export const useQuestions = (limit: number = 10, profileId?: string) => {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [selectedDimension, setSelectedDimension] = useState<string | null>(null);
+  const [selectedDimension, setSelectedDimensionInternal] = useState<string | null>(null);
+
+  // BOLT OPTIMIZATION: Consolidate state updates to prevent double-fetching.
+  // Wrapping the setter ensures that both dimension and page are updated in the same cycle.
+  const setSelectedDimension = useCallback((dimension: string | null) => {
+    setSelectedDimensionInternal(dimension);
+    setPage(1);
+  }, []);
 
   const loadQuestions = useCallback(async () => {
     try {
@@ -33,20 +40,17 @@ export const useQuestions = (limit: number = 10, profileId?: string) => {
     }
   }, [limit, page, selectedDimension, profileId]);
 
-  // Reset page when filters change
-  useEffect(() => {
-    setPage(1);
-  }, [selectedDimension]);
-
+  // BOLT OPTIMIZATION: Single effect for fetching data.
+  // By using the memoized loadQuestions, we avoid cascading fetches.
   useEffect(() => {
     loadQuestions();
   }, [loadQuestions]);
 
-  const goToPage = (newPage: number) => {
+  const goToPage = useCallback((newPage: number) => {
     setPage(newPage);
-  };
+  }, []);
 
-  const submitAnswer = async (response: Response) => {
+  const submitAnswer = useCallback(async (response: Response) => {
     try {
       await databaseService.submitResponse(response);
       return true;
@@ -54,7 +58,7 @@ export const useQuestions = (limit: number = 10, profileId?: string) => {
       console.error('Submission error:', err);
       return false;
     }
-  };
+  }, []);
 
   // BOLT OPTIMIZATION: Memoized totalPages to avoid redundant division and rounding on every render
   const totalPages = useMemo(() => Math.ceil(totalCount / limit), [totalCount, limit]);
