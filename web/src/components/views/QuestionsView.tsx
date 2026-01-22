@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Flame, Star, CheckCircle, Flag, HelpCircle, Trophy, MessageSquare, Target, Zap, Heart, Eye, Shield, Loader2
 } from 'lucide-react';
@@ -6,7 +6,9 @@ import { Toast } from '../common/Toast';
 import { useQuestions } from '../../hooks/useQuestions';
 import { useAuth } from '../../contexts/AuthContext';
 
-// BOLT OPTIMIZATION: Hoisted mockQuestions outside the component to avoid recreation on every render
+// BOLT OPTIMIZATION: Hoisted constants outside the component to avoid recreation on every render
+const STAR_ARRAY = [...Array(5)];
+
 const MOCK_QUESTIONS = [
   {
     id: 1,
@@ -46,20 +48,23 @@ export const QuestionsView: React.FC = () => {
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error' | 'info' | 'warning'} | null>(null);
   const dailyGoal = 10;
 
-  const questions = dbQuestions.length > 0 ? dbQuestions : MOCK_QUESTIONS;
+  // BOLT OPTIMIZATION: Memoize questions choice to avoid logic on every render
+  const questions = useMemo(() => dbQuestions.length > 0 ? dbQuestions : MOCK_QUESTIONS, [dbQuestions]);
 
-  const handleAnswer = async (option: any) => {
+  // BOLT OPTIMIZATION: Memoized handleAnswer with reduced dependencies via functional updates
+  const handleAnswer = useCallback(async (option: any) => {
     if (!option) return;
 
     setSelectedOption(option);
 
     const startTime = Date.now();
+    const currentQuestion = questions[currentQuestionIdx];
 
     // Attempt real submission if using DB questions
-    if (dbQuestions.length > 0 && user) {
+    if (dbQuestions.length > 0 && user && currentQuestion) {
       await submitAnswer({
         profile_id: user.id,
-        question_id: questions[currentQuestionIdx].id,
+        question_id: currentQuestion.id,
         answer_option_id: option.id,
         response_time_ms: Date.now() - startTime,
         confidence_level: 1.0
@@ -73,12 +78,15 @@ export const QuestionsView: React.FC = () => {
         setToast({ type: 'success', message: '🎉 Daily goal completed! +50 XP' });
       }
 
-      if (currentQuestionIdx < questions.length - 1) {
-        setCurrentQuestionIdx(prev => prev + 1);
-        setSelectedOption(null);
-      }
+      setCurrentQuestionIdx(prev => {
+        if (prev < questions.length - 1) {
+          setSelectedOption(null);
+          return prev + 1;
+        }
+        return prev;
+      });
     }, 1200);
-  };
+  }, [currentQuestionIdx, dbQuestions.length, questions, user, submitAnswer, dailyGoal]);
 
   const question = questions[currentQuestionIdx];
   const progress = (answeredToday / dailyGoal) * 100;
@@ -143,7 +151,7 @@ export const QuestionsView: React.FC = () => {
                   <span className="text-pink-300 font-bold text-sm capitalize">{question.type}</span>
                 </div>
                 <div className="flex items-center space-x-1">
-                  {[...Array(5)].map((_, i) => (
+                  {STAR_ARRAY.map((_, i) => (
                     <Star key={i} className={`w-4 h-4 ${i < question.difficulty ? 'text-yellow-400 fill-yellow-400' : 'text-slate-600'}`} />
                   ))}
                 </div>
