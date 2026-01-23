@@ -73,6 +73,8 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, setCurrentV
                 <button
                   key={item.id}
                   onClick={() => setCurrentView(item.id)}
+                  // PALETTE: Screen reader users identify current page - WCAG 4.1.2 (AA)
+                  aria-current={currentView === item.id ? 'page' : undefined}
                   className={`relative flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all duration-300 ${
                     currentView === item.id
                       ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-300 shadow-lg'
@@ -146,6 +148,8 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, setCurrentV
                     setCurrentView(item.id);
                     setIsMobileMenuOpen(false);
                   }}
+                  // PALETTE: Screen reader users identify current page in mobile menu - WCAG 4.1.2 (AA)
+                  aria-current={currentView === item.id ? 'page' : undefined}
                   className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${
                     currentView === item.id
                       ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-300'

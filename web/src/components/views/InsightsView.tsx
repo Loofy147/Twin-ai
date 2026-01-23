@@ -47,7 +47,15 @@ const PatternCard = ({ pattern }: any) => {
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div>
           <div className="text-xs text-slate-400 mb-1">Strength</div>
-          <div className="w-full bg-slate-700/30 rounded-full h-2">
+          <div
+            className="w-full bg-slate-700/30 rounded-full h-2"
+            // PALETTE: Pattern strength accessibility - WCAG 1.3.1 (AA)
+            role="progressbar"
+            aria-valuenow={Math.round(pattern.strength * 100)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={`${pattern.aspect} strength`}
+          >
             <div
               className="bg-gradient-to-r from-pink-500 to-rose-500 h-2 rounded-full"
               style={{ width: `${pattern.strength * 100}%` }}
@@ -83,7 +91,15 @@ const DimensionProgress = ({ dimension }: any) => {
         <span className="text-white font-semibold">{dimension.name}</span>
         <span className="text-slate-400 text-sm">{dimension.responses} responses</span>
       </div>
-      <div className="w-full bg-slate-700/30 rounded-full h-3">
+      <div
+        className="w-full bg-slate-700/30 rounded-full h-3"
+        // PALETTE: Dimension coverage accessibility - WCAG 1.3.1 (AA)
+        role="progressbar"
+        aria-valuenow={dimension.coverage}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`${dimension.name} coverage`}
+      >
         <div
           className={`bg-gradient-to-r ${colorMap[dimension.color]} h-3 rounded-full transition-all duration-500`}
           style={{ width: `${dimension.coverage}%` }}

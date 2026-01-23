@@ -130,7 +130,15 @@ export const QuestionsView: React.FC = () => {
             </div>
           </div>
 
-          <div className="relative w-full bg-slate-800/50 rounded-full h-4 overflow-hidden border border-slate-700/50">
+          <div
+            className="relative w-full bg-slate-800/50 rounded-full h-4 overflow-hidden border border-slate-700/50"
+            // PALETTE: Progress bar accessibility - WCAG 1.3.1 (AA)
+            role="progressbar"
+            aria-valuenow={Math.round(progress)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Daily question progress"
+          >
             <div
               className="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-cyan-500 transition-all duration-1000 rounded-full"
               style={{ width: `${progress}%` }}
@@ -176,6 +184,8 @@ export const QuestionsView: React.FC = () => {
                     key={option.id}
                     onClick={() => handleAnswer(option)}
                     disabled={selectedOption !== null}
+                    // PALETTE: Screen reader users can identify selected option - WCAG 4.1.2 (A)
+                    aria-pressed={selectedOption?.id === option.id}
                     className={`w-full p-6 rounded-2xl border-2 text-left transition-all duration-500 ${
                       selectedOption?.id === option.id
                         ? 'border-purple-500 bg-gradient-to-r from-purple-500/20 to-pink-500/20 scale-[1.02] shadow-2xl'
