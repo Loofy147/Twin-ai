@@ -4,17 +4,19 @@ import {
 } from 'lucide-react';
 import { useAnalytics } from '../../hooks/useAnalytics';
 
-const StatsCard = ({ icon: Icon, label, value, change, color }: any) => {
-  const colorMap: any = {
-    purple: 'from-purple-500 to-pink-500',
-    pink: 'from-pink-500 to-rose-500',
-    cyan: 'from-cyan-500 to-blue-500',
-    green: 'from-green-500 to-emerald-500'
-  };
+// BOLT OPTIMIZATION: Hoisted shared color map to avoid recreation across multiple sub-components.
+const INSIGHTS_COLOR_MAP: Record<string, string> = {
+  purple: 'from-purple-500 to-pink-500',
+  pink: 'from-pink-500 to-rose-500',
+  cyan: 'from-cyan-500 to-blue-500',
+  green: 'from-green-500 to-emerald-500',
+  blue: 'from-blue-500 to-cyan-500'
+};
 
+const StatsCard = ({ icon: Icon, label, value, change, color }: any) => {
   return (
     <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-lg border border-slate-700/50 rounded-xl p-6 hover:border-purple-500/50 transition-all">
-      <div className={`w-12 h-12 bg-gradient-to-br ${colorMap[color]} rounded-lg flex items-center justify-center mb-4`}>
+      <div className={`w-12 h-12 bg-gradient-to-br ${INSIGHTS_COLOR_MAP[color]} rounded-lg flex items-center justify-center mb-4`}>
         <Icon className="w-6 h-6 text-white" />
       </div>
       <div className="text-slate-400 text-sm mb-1">{label}</div>
@@ -69,14 +71,6 @@ const PatternCard = ({ pattern }: any) => {
 };
 
 const DimensionProgress = ({ dimension }: any) => {
-  const colorMap: any = {
-    purple: 'from-purple-500 to-pink-500',
-    pink: 'from-pink-500 to-rose-500',
-    cyan: 'from-cyan-500 to-blue-500',
-    green: 'from-green-500 to-emerald-500',
-    blue: 'from-blue-500 to-cyan-500'
-  };
-
   return (
     <div>
       <div className="flex justify-between items-center mb-2">
@@ -85,7 +79,7 @@ const DimensionProgress = ({ dimension }: any) => {
       </div>
       <div className="w-full bg-slate-700/30 rounded-full h-3">
         <div
-          className={`bg-gradient-to-r ${colorMap[dimension.color]} h-3 rounded-full transition-all duration-500`}
+          className={`bg-gradient-to-r ${INSIGHTS_COLOR_MAP[dimension.color]} h-3 rounded-full transition-all duration-500`}
           style={{ width: `${dimension.coverage}%` }}
         ></div>
       </div>
@@ -94,14 +88,36 @@ const DimensionProgress = ({ dimension }: any) => {
   );
 };
 
+// BOLT OPTIMIZATION: Hoisted static dimensions configuration to avoid recreation on every render.
+const DIMENSIONS_CONFIG = [
+  { name: 'Values', coverage: 85, responses: 127, color: 'purple' },
+  { name: 'Work Style', coverage: 72, responses: 98, color: 'pink' },
+  { name: 'Relationships', coverage: 91, responses: 156, color: 'cyan' },
+  { name: 'Learning', coverage: 64, responses: 82, color: 'green' },
+  { name: 'Decision Making', coverage: 78, responses: 94, color: 'blue' }
+];
+
 export const InsightsView: React.FC = () => {
-  const { patterns: dbPatterns, loading } = useAnalytics();
+  const { patterns: dbPatterns, analyticsData, loading } = useAnalytics();
+
+  const dimensions = useMemo(() => {
+    if (analyticsData && analyticsData.length > 0) {
+      const colors = ['purple', 'pink', 'cyan', 'green', 'blue'];
+      return analyticsData.map((d: any, i: number) => ({
+        name: d.name,
+        coverage: d.percentage,
+        responses: d.count,
+        color: colors[i % colors.length]
+      }));
+    }
+    return DIMENSIONS_CONFIG;
+  }, [analyticsData]);
 
   const patterns = useMemo(() => {
     if (dbPatterns && dbPatterns.length > 0) {
       return dbPatterns.map(p => ({
-        dimension: p.dimension_id, // Simplified for now
-        aspect: p.pattern_type || p.aspect_id,
+        dimension: p.dimension_name || 'General',
+        aspect: p.aspect_name || p.pattern_type || 'Uncategorized',
         confidence: p.confidence || 0.5,
         strength: p.strength || 0.5,
         evidence: p.evidence_count || 0,
@@ -115,14 +131,6 @@ export const InsightsView: React.FC = () => {
       { dimension: 'Decision Making', aspect: 'Data Driven', confidence: 0.81, strength: 0.76, evidence: 29, trend: 'up' }
     ];
   }, [dbPatterns]);
-
-  const dimensions = [
-    { name: 'Values', coverage: 85, responses: 127, color: 'purple' },
-    { name: 'Work Style', coverage: 72, responses: 98, color: 'pink' },
-    { name: 'Relationships', coverage: 91, responses: 156, color: 'cyan' },
-    { name: 'Learning', coverage: 64, responses: 82, color: 'green' },
-    { name: 'Decision Making', coverage: 78, responses: 94, color: 'blue' }
-  ];
 
   if (loading) {
     return (

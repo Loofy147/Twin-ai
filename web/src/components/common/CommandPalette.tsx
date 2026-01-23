@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Search, MessageSquare, Lightbulb, BarChart3, Link2, Brain, Settings, Download
 } from 'lucide-react';
@@ -9,6 +9,17 @@ interface CommandPaletteProps {
   onClose: () => void;
   setCurrentView: (view: string) => void;
 }
+
+// BOLT OPTIMIZATION: Hoisted commands to avoid recreation on every keystroke/render.
+const COMMANDS = [
+  { id: 'questions', label: 'Answer Questions', icon: MessageSquare, shortcut: 'Q', view: 'questions' },
+  { id: 'insights', label: 'View Insights', icon: Lightbulb, shortcut: 'I', view: 'insights' },
+  { id: 'analytics', label: 'Analytics Dashboard', icon: BarChart3, shortcut: 'A', view: 'analytics' },
+  { id: 'integrations', label: 'Manage Integrations', icon: Link2, shortcut: 'M', view: 'integrations' },
+  { id: 'twin', label: 'Digital Twin', icon: Brain, shortcut: 'T', view: 'twin' },
+  { id: 'settings', label: 'Settings', icon: Settings, shortcut: 'S', view: 'settings' },
+  { id: 'export', label: 'Export Data', icon: Download, shortcut: 'E', action: 'export' }
+];
 
 export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, setCurrentView }) => {
   const [search, setSearch] = useState('');
@@ -30,21 +41,15 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
+  // BOLT OPTIMIZATION: Memoized filtered results to skip redundant filter logic on every re-render.
+  const filteredCommands = useMemo(() => {
+    const searchLower = search.toLowerCase();
+    return COMMANDS.filter(cmd =>
+      cmd.label.toLowerCase().includes(searchLower)
+    );
+  }, [search]);
+
   if (!isOpen) return null;
-
-  const commands = [
-    { id: 'questions', label: 'Answer Questions', icon: MessageSquare, shortcut: 'Q', view: 'questions' },
-    { id: 'insights', label: 'View Insights', icon: Lightbulb, shortcut: 'I', view: 'insights' },
-    { id: 'analytics', label: 'Analytics Dashboard', icon: BarChart3, shortcut: 'A', view: 'analytics' },
-    { id: 'integrations', label: 'Manage Integrations', icon: Link2, shortcut: 'M', view: 'integrations' },
-    { id: 'twin', label: 'Digital Twin', icon: Brain, shortcut: 'T', view: 'twin' },
-    { id: 'settings', label: 'Settings', icon: Settings, shortcut: 'S', view: 'settings' },
-    { id: 'export', label: 'Export Data', icon: Download, shortcut: 'E', action: 'export' }
-  ];
-
-  const filteredCommands = commands.filter(cmd =>
-    cmd.label.toLowerCase().includes(search.toLowerCase())
-  );
 
   const handleCommand = (cmd: any) => {
     if (cmd.view) {

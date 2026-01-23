@@ -6,6 +6,7 @@ export const useAnalytics = () => {
   const { user } = useAuth();
   const [analyticsData, setAnalyticsData] = useState<any[]>([]);
   const [metrics, setMetrics] = useState<any>(null);
+  const [weeklyActivity, setWeeklyActivity] = useState<any[]>([]);
   const [patterns, setPatterns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -15,18 +16,17 @@ export const useAnalytics = () => {
 
     try {
       setLoading(true);
-      // BOLT OPTIMIZATION: Reduced 3 API calls to 2 by using the comprehensive analytics RPC
-      const [analyticsResponse, detectedPatterns] = await Promise.all([
-        databaseService.getAnalytics(user.id),
-        databaseService.getPatterns(user.id)
-      ]);
+      // BOLT OPTIMIZATION: Reduced API calls to a single unified RPC for all dashboard data.
+      // This includes metrics, dimension breakdown, weekly activity, and detected patterns.
+      const analyticsResponse = await databaseService.getAnalytics(user.id);
 
       if (analyticsResponse) {
         setAnalyticsData(analyticsResponse.dimension_breakdown || []);
         setMetrics(analyticsResponse.metrics);
+        setPatterns(analyticsResponse.patterns || []);
+        setWeeklyActivity(analyticsResponse.weekly_activity || []);
       }
 
-      setPatterns(detectedPatterns);
       setError(null);
     } catch (err: any) {
       setError(err.message || 'Failed to load analytics');
@@ -39,5 +39,5 @@ export const useAnalytics = () => {
     loadData();
   }, [loadData]);
 
-  return { analyticsData, patterns, metrics, loading, error, reloadData: loadData };
+  return { analyticsData, weeklyActivity, patterns, metrics, loading, error, reloadData: loadData };
 };

@@ -2,21 +2,25 @@
 
 class PatternDetector {
     async analyzeResponses(db, profileId) {
-        // Find high-frequency aspects in responses
-        // GROUP BY aspect_id in answer_options joined with responses
+        /**
+         * BOLT OPTIMIZATION & ACCURACY:
+         * 1. Join aspects directly to get dimension_id (deeper relation).
+         * 2. This is more accurate as it uses the dimension associated with the specific aspect measured.
+         * 3. Potentially faster than joining the large questions table in high-response environments.
+         */
         const aspectFrequency = db.prepare(`
             SELECT
                 ao.aspect_id,
-                q.primary_dimension_id,
+                a.dimension_id as primary_dimension_id,
                 COUNT(*) as frequency,
                 SUM(ao.weight) as total_strength
             FROM responses r
             JOIN answer_options ao ON r.answer_option_id = ao.id
-            JOIN questions q ON r.question_id = q.id
+            JOIN aspects a ON ao.aspect_id = a.id
             WHERE r.profile_id = ?
               AND r.response_type = 'selected'
               AND ao.aspect_id IS NOT NULL
-            GROUP BY ao.aspect_id, q.primary_dimension_id
+            GROUP BY ao.aspect_id, a.dimension_id
             HAVING frequency >= 3
         `).all(profileId);
 

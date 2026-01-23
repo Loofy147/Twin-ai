@@ -517,8 +517,15 @@ class EnhancedDatabaseService {
 
   /**
    * ENHANCED: Get comprehensive analytics (single RPC call)
+   * Returns metrics, dimension breakdown, weekly activity, and detected patterns
    */
-  async getAnalytics(profileId: string, days: number = 30): Promise<any> {
+  async getAnalytics(profileId: string, days: number = 30): Promise<{
+    metrics: any;
+    dimension_breakdown: any[];
+    weekly_activity: any[];
+    patterns: any[];
+    timestamp: string;
+  }> {
     const cacheKey = `analytics:${profileId}:${days}`;
 
     // Check cache
@@ -530,6 +537,8 @@ class EnhancedDatabaseService {
 
     const result = await this.withRetry(
       async () => {
+        // BOLT OPTIMIZATION: Call the enhanced comprehensive analytics RPC
+        // which now includes joined patterns and accurate multi-dimensional breakdown.
         const { data, error } = await supabase.rpc('get_comprehensive_analytics', {
           p_profile_id: profileId,
           p_days: days
