@@ -1,15 +1,16 @@
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { supabase } from '../../lib/supabase';
 
 // Mock Supabase client
-jest.mock('../../lib/supabase', () => ({
+vi.mock('../../lib/supabase', () => ({
   supabase: {
-    from: jest.fn(() => ({
-      select: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      single: jest.fn(),
-      upsert: jest.fn(),
-      insert: jest.fn(),
-      delete: jest.fn().mockReturnThis(),
+    from: vi.fn(() => ({
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      single: vi.fn(),
+      upsert: vi.fn(),
+      insert: vi.fn(),
+      delete: vi.fn().mockReturnThis(),
     })),
   },
 }));
@@ -19,10 +20,10 @@ describe('Multi-tenant Isolation Patterns', () => {
   const userB = 'user-b-uuid';
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
-  test('Entities unique constraint prevents collisions only within same user', async () => {
+  it('Entities unique constraint prevents collisions only within same user', async () => {
     // This test simulates the logic we expect the DB to enforce via constraints
     // Since we can't run real Postgres here, we verify the service calls match requirements
 
@@ -30,8 +31,8 @@ describe('Multi-tenant Isolation Patterns', () => {
     const entityType = 'event';
 
     // Mock successful upsert for User A
-    (supabase.from as jest.Mock).mockReturnValue({
-      upsert: jest.fn().mockResolvedValue({ error: null })
+    (supabase.from as any).mockReturnValue({
+      upsert: vi.fn().mockResolvedValue({ error: null })
     });
 
     // Action: User A creates entity
@@ -59,16 +60,16 @@ describe('Multi-tenant Isolation Patterns', () => {
     expect(supabase.from).toHaveBeenCalledWith('entities');
   });
 
-  test('RLS Policy Logic Simulation: User only accesses their own data', async () => {
+  it('RLS Policy Logic Simulation: User only accesses their own data', async () => {
     // In production, Supabase Auth handles this via RLS.
     // Here we verify our services correctly pass the profileId to queries.
 
     const mockData = [{ id: 1, name: 'User A Event', profile_id: userA }];
 
-    const selectMock = jest.fn().mockReturnThis();
-    const eqMock = jest.fn().mockReturnThis();
+    const selectMock = vi.fn().mockReturnThis();
+    const eqMock = vi.fn().mockReturnThis();
 
-    (supabase.from as jest.Mock).mockReturnValue({
+    (supabase.from as any).mockReturnValue({
       select: selectMock,
       eq: eqMock,
     });

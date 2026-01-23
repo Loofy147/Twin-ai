@@ -44,6 +44,13 @@ interface EnvironmentConfig {
     maxQuestionsPerDay: number;
   };
 
+  // Security
+  security: {
+    sessionTimeout: number;
+    passwordMinLength: number;
+    csrfSecret?: string;
+  };
+
   // Rate limiting
   rateLimits: {
     questionsPerHour: number;
@@ -69,7 +76,9 @@ const OPTIONAL_VARS = {
   VITE_SENTRY_SAMPLE_RATE: '1.0',
   VITE_MAX_QUESTIONS_PER_DAY: '20',
   VITE_RATE_LIMIT_QUESTIONS: '100',
-  VITE_RATE_LIMIT_API: '60'
+  VITE_RATE_LIMIT_API: '60',
+  VITE_SESSION_TIMEOUT: '30',
+  VITE_PASSWORD_MIN_LENGTH: '10'
 } as const;
 
 class EnvironmentValidator {
@@ -199,6 +208,12 @@ class EnvironmentValidator {
         enableGoogleIntegrations: import.meta.env.VITE_ENABLE_GOOGLE_INTEGRATIONS === 'true',
         enablePatternDetection: import.meta.env.VITE_ENABLE_PATTERN_DETECTION !== 'false', // Default true
         maxQuestionsPerDay: parseInt(import.meta.env.VITE_MAX_QUESTIONS_PER_DAY || OPTIONAL_VARS.VITE_MAX_QUESTIONS_PER_DAY)
+      },
+
+      security: {
+        sessionTimeout: parseInt(import.meta.env.VITE_SESSION_TIMEOUT || OPTIONAL_VARS.VITE_SESSION_TIMEOUT),
+        passwordMinLength: parseInt(import.meta.env.VITE_PASSWORD_MIN_LENGTH || OPTIONAL_VARS.VITE_PASSWORD_MIN_LENGTH),
+        csrfSecret: import.meta.env.VITE_CSRF_SECRET
       },
 
       rateLimits: {
