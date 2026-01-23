@@ -11,6 +11,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   clearError: () => void;
+  csrfToken: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,6 +20,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [csrfToken, setCsrfToken] = useState<string | null>(null);
 
   // Initialize auth state on mount
   useEffect(() => {
@@ -29,7 +31,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (currentUser) {
           logger.info('Auth state initialized', { user_id: currentUser.id });
+          // Initialize session management for existing session
+          authService.initSessionManagement();
         }
+
+        // Always generate/get a CSRF token
+        setCsrfToken(authService.getCSRFToken());
+
       } catch (err: any) {
         logger.error('Auth initialization failed', { error: err.message });
         setError('Failed to initialize authentication');
@@ -49,6 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (authUser) {
         logger.info('Auth state changed: user logged in', { user_id: authUser.id });
+        authService.initSessionManagement();
       } else {
         logger.info('Auth state changed: user logged out');
       }
@@ -59,6 +68,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
+  // Listen for session events
+  useEffect(() => {
+    const handleSessionWarning = (e: any) => {
+      logger.warn('Session expiring soon', { detail: e.detail });
+      // Here you could trigger a UI toast
+    };
+
+    const handleSessionExpired = () => {
+      logger.info('Session expired event received');
+      setUser(null);
+      window.location.href = '/login?reason=session_expired';
+    };
+
+    window.addEventListener('session:warning', handleSessionWarning);
+    window.addEventListener('session:expired', handleSessionExpired);
+
+    return () => {
+      window.removeEventListener('session:warning', handleSessionWarning);
+      window.removeEventListener('session:expired', handleSessionExpired);
+    };
+  }, []);
+
   const signUp = useCallback(async (email: string, password: string) => {
     setLoading(true);
     setError(null);
@@ -66,6 +97,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const newUser = await authService.signUp({ email, password });
       setUser(newUser);
+      setCsrfToken(authService.getCSRFToken());
       logger.info('User signed up successfully', { user_id: newUser.id });
     } catch (err: any) {
       const errorMessage = err.message || 'Signup failed';
@@ -82,8 +114,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
 
     try {
-      const authUser = await authService.signIn(email, password);
+      const currentCsrf = authService.getCSRFToken();
+      const authUser = await authService.signIn(email, password, currentCsrf);
       setUser(authUser);
+      setCsrfToken(authService.getCSRFToken());
       logger.info('User signed in successfully', { user_id: authUser.id });
     } catch (err: any) {
       const errorMessage = err.message || 'Login failed';
@@ -102,6 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await authService.signOut();
       setUser(null);
+      setCsrfToken(null);
       logger.info('User signed out successfully');
     } catch (err: any) {
       const errorMessage = err.message || 'Logout failed';
@@ -144,7 +179,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signIn,
         signOut,
         resetPassword,
-        clearError
+        clearError,
+        csrfToken
       }}
     >
       {children}
@@ -152,10 +188,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-/**
- * Hook to access auth context
- * Throws error if used outside AuthProvider
- */
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
 
@@ -166,10 +198,6 @@ export const useAuth = (): AuthContextType => {
   return context;
 };
 
-/**
- * Higher-order component to protect routes
- * Redirects to login if user is not authenticated
- */
 export const withAuth = <P extends object>(
   Component: React.ComponentType<P>
 ): React.FC<P> => {

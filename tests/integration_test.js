@@ -2,8 +2,8 @@
 const { db, initDb } = require('../mobile/src/database/db.js');
 const ContactsIntegration = require('../mobile/src/integrations/ContactsIntegration');
 const CallHistoryIntegration = require('../mobile/src/integrations/CallHistoryIntegration');
-const GoogleCalendarIntegration = require('../web/src/integrations/GoogleCalendarIntegration');
-const GoogleDriveIntegration = require('../web/src/integrations/GoogleDriveIntegration');
+const { GoogleCalendarIntegration } = require('../shared/integrations/GoogleCalendarIntegration');
+const { GoogleDriveIntegration } = require('../shared/integrations/GoogleDriveIntegration');
 const DynamicQuestionGenerator = require('../shared/DynamicQuestionGenerator');
 const AdaptiveSelectionAlgorithm = require('../shared/AdaptiveSelectionAlgorithm');
 const PatternDetector = require('../shared/PatternDetector');

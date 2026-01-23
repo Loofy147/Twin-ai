@@ -15,7 +15,7 @@ describe('Validation Utilities', () => {
   });
 
   it('validates passwords', () => {
-    expect(validatePassword('Password123!')).toBe(true);
+    expect(validatePassword('SafePass99!@#')).toBe(true);
     expect(validatePassword('short')).toBe(false);
     expect(validatePassword('no-special-char123')).toBe(false);
   });
