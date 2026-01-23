@@ -1,8 +1,22 @@
 // web/src/utils/validation.ts
 
+// BOLT OPTIMIZATION: Hoisted regex patterns to avoid recreation on every call
+// Added case-insensitive flag to avoid redundant .toLowerCase() allocations.
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
+const SEQUENTIAL_PATTERN = /(123|abc|qwerty)/i;
+const REPETITIVE_PATTERN = /(.)\1{2,}/;
+
+// BOLT OPTIMIZATION: Hoisted entity map to avoid object creation inside the replace callback
+const ENTITY_MAP: Record<string, string> = {
+  '<': '&lt;',
+  '>': '&gt;',
+  '\"': '&quot;',
+  '\'': '&#39;',
+  '&': '&amp;'
+};
+
 export const validateEmail = (email: string): boolean => {
-  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return re.test(email.toLowerCase());
+  return EMAIL_REGEX.test(email);
 };
 
 export const validateRequired = (value: any): boolean => {
@@ -30,16 +44,7 @@ export const validateUrl = (url: string): boolean => {
 };
 
 export const sanitizeString = (str: string): string => {
-  return str.replace(/[<>\"\'&]/g, (match) => {
-    const entities: Record<string, string> = {
-      '<': '&lt;',
-      '>': '&gt;',
-      '\"': '&quot;',
-      '\'': '&#39;',
-      '&': '&amp;'
-    };
-    return entities[match];
-  }).trim();
+  return str.replace(/[<>\"\'&]/g, (match) => ENTITY_MAP[match]).trim();
 };
 
 /**
@@ -58,8 +63,8 @@ export const validatePassword = (password: string): boolean => {
   const hasSpecial = /[@$!%*?&#^()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
 
   // Prevent common sequential patterns
-  const isSequential = /(123|abc|qwerty)/i.test(password);
-  const isRepetitive = /(.)\1{2,}/.test(password);
+  const isSequential = SEQUENTIAL_PATTERN.test(password);
+  const isRepetitive = REPETITIVE_PATTERN.test(password);
 
   return hasUppercase && hasLowercase && hasNumber && hasSpecial && !isSequential && !isRepetitive;
 };
@@ -92,7 +97,7 @@ export const getPasswordStrength = (password: string): {
   if (/[@$!%*?&]/.test(password)) score += 15;
   else feedback.push('At least one special character');
 
-  if (!/(123|abc|qwerty)/i.test(password)) score += 15;
+  if (!SEQUENTIAL_PATTERN.test(password)) score += 15;
   else feedback.push('Avoid sequential patterns (123, abc)');
 
   return {

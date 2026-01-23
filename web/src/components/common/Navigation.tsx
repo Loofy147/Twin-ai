@@ -9,6 +9,16 @@ interface NavigationProps {
   setCurrentView: (view: string) => void;
 }
 
+// BOLT OPTIMIZATION: Hoisted navigation configuration to avoid recreation on every render,
+// which is particularly important for Navigation as it re-renders on every scroll event.
+const NAV_ITEMS = [
+  { id: 'home', label: 'Home', icon: Sparkles },
+  { id: 'questions', label: 'Questions', icon: MessageSquare },
+  { id: 'insights', label: 'Insights', icon: Lightbulb },
+  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+  { id: 'integrations', label: 'Integrations', icon: Link2 }
+];
+
 export const Navigation: React.FC<NavigationProps> = ({ currentView, setCurrentView }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -30,14 +40,6 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, setCurrentV
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
-
-  const navItems = [
-    { id: 'home', label: 'Home', icon: Sparkles },
-    { id: 'questions', label: 'Questions', icon: MessageSquare },
-    { id: 'insights', label: 'Insights', icon: Lightbulb },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-    { id: 'integrations', label: 'Integrations', icon: Link2 }
-  ];
 
   return (
     <>
@@ -69,7 +71,7 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, setCurrentV
             </button>
 
             <div className="hidden md:flex items-center space-x-2">
-              {navItems.map(item => (
+              {NAV_ITEMS.map(item => (
                 <button
                   key={item.id}
                   onClick={() => setCurrentView(item.id)}
@@ -139,7 +141,7 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, setCurrentV
         {isMobileMenuOpen && (
           <div className="md:hidden bg-slate-950/98 backdrop-blur-2xl border-t border-purple-500/10">
             <div className="px-4 py-6 space-y-2">
-              {navItems.map(item => (
+              {NAV_ITEMS.map(item => (
                 <button
                   key={item.id}
                   onClick={() => {

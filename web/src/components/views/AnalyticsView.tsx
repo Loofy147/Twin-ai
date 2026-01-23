@@ -194,7 +194,7 @@ const DimensionBreakdownItem = memo(({ dimension }: any) => {
 
 export const AnalyticsView: React.FC = () => {
   // BOLT OPTIMIZATION: Now using real-time aggregated data from the comprehensive analytics RPC
-  const { analyticsData, metrics, loading } = useAnalytics();
+  const { analyticsData, weeklyActivity, metrics, loading } = useAnalytics();
   const [timeframe, setTimeframe] = useState('week');
 
   const dimensionBreakdown = useMemo(() => {
@@ -207,16 +207,20 @@ export const AnalyticsView: React.FC = () => {
     }));
   }, [analyticsData]);
 
-  // Fallback data for empty states or loading
-  const weeklyData = useMemo(() => [
-    { day: 'Mon', responses: 0, confidence: 0 },
-    { day: 'Tue', responses: 0, confidence: 0 },
-    { day: 'Wed', responses: 0, confidence: 0 },
-    { day: 'Thu', responses: 0, confidence: 0 },
-    { day: 'Fri', responses: 0, confidence: 0 },
-    { day: 'Sat', responses: 0, confidence: 0 },
-    { day: 'Sun', responses: 0, confidence: 0 }
-  ], []);
+  // BOLT OPTIMIZATION: Use real-time weekly activity with zero-filled gaps for accurate visualization
+  const weeklyData = useMemo(() => {
+    if (weeklyActivity && weeklyActivity.length > 0) return weeklyActivity;
+
+    return [
+      { day: 'Mon', responses: 0, confidence: 0 },
+      { day: 'Tue', responses: 0, confidence: 0 },
+      { day: 'Wed', responses: 0, confidence: 0 },
+      { day: 'Thu', responses: 0, confidence: 0 },
+      { day: 'Fri', responses: 0, confidence: 0 },
+      { day: 'Sat', responses: 0, confidence: 0 },
+      { day: 'Sun', responses: 0, confidence: 0 }
+    ];
+  }, [weeklyActivity]);
 
   if (loading) {
     return (
