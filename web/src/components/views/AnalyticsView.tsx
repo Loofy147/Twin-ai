@@ -240,12 +240,13 @@ export const AnalyticsView: React.FC = () => {
               <button
                 key={tf}
                 onClick={() => setTimeframe(tf)}
-                aria-label={`View analytics by ${tf}`}
-                className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                // PALETTE: Keyboard navigation enhancement - WCAG 2.4.7 (AA)
+                className={`px-4 py-2 rounded-lg font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
                   timeframe === tf
                     ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
                     : 'bg-slate-800/50 text-slate-400 hover:text-white'
                 }`}
+                aria-label={`View analytics by ${tf}`}
               >
                 {tf.charAt(0).toUpperCase() + tf.slice(1)}
               </button>

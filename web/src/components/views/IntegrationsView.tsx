@@ -97,11 +97,17 @@ const IntegrationCard = ({ integration, status, onConnect, onSync, isSyncing }: 
           <button
             onClick={onSync}
             disabled={isSyncing}
-            className={`p-3 rounded-xl border-2 ${colors.border} ${colors.text} hover:${colors.bg} transition-all ${
+            // PALETTE: Screen reader users can identify action - WCAG 4.1.2 (A)
+            aria-label={`Sync ${integration.name}`}
+            className={`p-3 rounded-xl border-2 ${colors.border} ${colors.text} hover:${colors.bg} transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-purple-500 ${
               isSyncing ? 'opacity-50 cursor-not-allowed' : ''
             }`}
           >
-            <RefreshCw className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} aria-hidden="true" />
+            {/* PALETTE: Status updates for screen readers - WCAG 4.1.3 (AA) */}
+            <span className="sr-only" aria-live="polite">
+              {isSyncing ? `Syncing ${integration.name} in progress` : `Sync ${integration.name} complete`}
+            </span>
           </button>
         )}
       </div>
