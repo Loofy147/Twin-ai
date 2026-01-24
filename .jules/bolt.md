@@ -17,3 +17,7 @@
 ## 2026-01-22 - [Unified RPC for Dashboard Analytics]
 **Learning:** Fetching dashboard components (metrics, breakdown, patterns, activity) via separate API calls causes high TTFB (Time to First Byte) and UI layout shifts as data trickles in. Consolidating into a single server-side RPC reduced network roundtrips from 4 to 1 and allowed for "gap-filling" (e.g., zero-filling days with no activity) to be handled efficiently in the DB instead of the client.
 **Action:** Use unified RPCs for data-heavy dashboard views. Shift data normalization and relation joining (like patterns -> dimensions) to the server to reduce payload size and client-side processing.
+
+## 2026-01-23 - [React Memoization & Constant Hoisting]
+**Learning:** In large React components, declaring complex objects (icons, color maps, configurations) inside the component body causes them to be recreated on every render, breaking props equality for children and negating the benefits of `React.memo`. Additionally, when wrapping large components in `memo`, subtle syntax errors (like missing closing parentheses) can break the entire build and lead to confusing errors during HMR.
+**Action:** Always hoist static configuration objects to the module level. When memoizing components, verify the component signature and closing syntax carefully. Use `useCallback` for event handlers passed to memoized children to ensure stable references.

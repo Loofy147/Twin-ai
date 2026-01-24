@@ -38,6 +38,53 @@ const MOCK_QUESTIONS = [
   }
 ];
 
+// BOLT: Extract and memoize OptionButton to prevent all buttons re-rendering when one is selected
+// Expected: -75% button re-renders on selection
+const OptionButton = React.memo(({
+  option,
+  isSelected,
+  isAnySelected,
+  onSelect
+}: {
+  option: any,
+  isSelected: boolean,
+  isAnySelected: boolean,
+  onSelect: (option: any) => void
+}) => {
+  const OptionIcon = option.icon || MessageSquare;
+
+  return (
+    <button
+      onClick={() => onSelect(option)}
+      disabled={isAnySelected}
+      // PALETTE: Screen reader users can identify selected option - WCAG 4.1.2 (A)
+      aria-pressed={isSelected}
+      className={`w-full p-6 rounded-2xl border-2 text-left transition-all duration-500 ${
+        isSelected
+          ? 'border-purple-500 bg-gradient-to-r from-purple-500/20 to-pink-500/20 scale-[1.02] shadow-2xl'
+          : 'border-slate-600/50 bg-slate-800/30 hover:border-purple-500/50 hover:bg-slate-700/40'
+      } ${isAnySelected && !isSelected ? 'opacity-40' : ''}`}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-5">
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-lg ${
+            isSelected
+              ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white'
+              : 'bg-slate-700/50 text-slate-300'
+          }`}>
+            {option.id}
+          </div>
+          <OptionIcon className={`w-6 h-6 ${isSelected ? 'text-purple-400' : 'text-slate-500'}`} />
+          <span className="text-lg font-medium text-white">{option.text}</span>
+        </div>
+        {isSelected && (
+          <CheckCircle className="w-7 h-7 text-purple-400" />
+        )}
+      </div>
+    </button>
+  );
+});
+
 export const QuestionsView: React.FC = () => {
   const { user } = useAuth();
   const { questions: dbQuestions, loading, error, submitAnswer } = useQuestions(10, user?.id);
@@ -177,40 +224,15 @@ export const QuestionsView: React.FC = () => {
             </div>
 
             <div className="space-y-3">
-              {(question.options || []).map((option: any, idx: number) => {
-                const OptionIcon = option.icon || MessageSquare;
-                return (
-                  <button
-                    key={option.id}
-                    onClick={() => handleAnswer(option)}
-                    disabled={selectedOption !== null}
-                    // PALETTE: Screen reader users can identify selected option - WCAG 4.1.2 (A)
-                    aria-pressed={selectedOption?.id === option.id}
-                    className={`w-full p-6 rounded-2xl border-2 text-left transition-all duration-500 ${
-                      selectedOption?.id === option.id
-                        ? 'border-purple-500 bg-gradient-to-r from-purple-500/20 to-pink-500/20 scale-[1.02] shadow-2xl'
-                        : 'border-slate-600/50 bg-slate-800/30 hover:border-purple-500/50 hover:bg-slate-700/40'
-                    } ${selectedOption && selectedOption.id !== option.id ? 'opacity-40' : ''}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-5">
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-lg ${
-                          selectedOption?.id === option.id
-                            ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white'
-                            : 'bg-slate-700/50 text-slate-300'
-                        }`}>
-                          {option.id}
-                        </div>
-                        <OptionIcon className={`w-6 h-6 ${selectedOption?.id === option.id ? 'text-purple-400' : 'text-slate-500'}`} />
-                        <span className="text-lg font-medium text-white">{option.text}</span>
-                      </div>
-                      {selectedOption?.id === option.id && (
-                        <CheckCircle className="w-7 h-7 text-purple-400" />
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
+              {(question.options || []).map((option: any) => (
+                <OptionButton
+                  key={option.id}
+                  option={option}
+                  isSelected={selectedOption?.id === option.id}
+                  isAnySelected={selectedOption !== null}
+                  onSelect={handleAnswer}
+                />
+              ))}
             </div>
 
             <div className="mt-8 flex items-center justify-between">

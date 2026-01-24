@@ -10,7 +10,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 serve(async (req) => {
   const url = new URL(req.url)
   const code = url.searchParams.get('code')
-  const state = url.searchParams.get('state') // Expected to be profileId
+  const state = url.searchParams.get('state') // SENTINEL: Now expects a nonce ID
 
   if (!code || !state) {
     return new Response(
@@ -20,6 +20,26 @@ serve(async (req) => {
   }
 
   try {
+    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!)
+
+    // SENTINEL: Verify and consume the OAuth nonce - CRITICAL
+    const { data: nonce, error: nonceError } = await supabase
+      .from('oauth_nonces')
+      .select('profile_id')
+      .eq('id', state)
+      .single()
+
+    if (nonceError || !nonce) {
+      console.error('Invalid or expired state nonce:', state, nonceError)
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired state' }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      )
+    }
+
+    // SENTINEL: Delete nonce immediately after use (one-time use)
+    await supabase.from('oauth_nonces').delete().eq('id', state)
+
     // 1. Exchange code for tokens
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
@@ -39,13 +59,11 @@ serve(async (req) => {
       throw new Error(tokens.error_description || tokens.error)
     }
 
-    // 2. Store tokens in database
-    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!)
-
+    // 2. Store tokens in database using the verified profile_id from nonce
     const { error } = await supabase
       .from('integration_tokens')
       .upsert({
-        profile_id: state,
+        profile_id: nonce.profile_id,
         integration_type: 'google_calendar',
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token,
