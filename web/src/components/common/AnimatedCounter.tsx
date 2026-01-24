@@ -8,7 +8,8 @@ interface AnimatedCounterProps {
   prefix?: string;
 }
 
-export const AnimatedCounter: React.FC<AnimatedCounterProps> = ({
+// BOLT: Memoize to prevent redundant animation logic - Expected: Skip re-renders unless value/duration change
+export const AnimatedCounter: React.FC<AnimatedCounterProps> = React.memo(({
   value,
   duration = 2000,
   suffix = '',
@@ -35,4 +36,4 @@ export const AnimatedCounter: React.FC<AnimatedCounterProps> = ({
   }, [isVisible, value, duration]);
 
   return <span ref={ref}>{prefix}{count.toLocaleString()}{suffix}</span>;
-};
+});
