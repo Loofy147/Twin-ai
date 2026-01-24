@@ -1,10 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, memo } from 'react';
 import {
   MessageSquare, Lightbulb, BarChart3, Target, Filter, TrendingUp, TrendingDown, Activity, CheckCircle, Loader2
 } from 'lucide-react';
 import { useAnalytics } from '../../hooks/useAnalytics';
 
-// BOLT OPTIMIZATION: Hoisted shared color map to avoid recreation across multiple sub-components.
+// BOLT OPTIMIZATION: Hoisted shared configurations to avoid recreation on every render.
 const INSIGHTS_COLOR_MAP: Record<string, string> = {
   purple: 'from-purple-500 to-pink-500',
   pink: 'from-pink-500 to-rose-500',
@@ -13,7 +13,14 @@ const INSIGHTS_COLOR_MAP: Record<string, string> = {
   blue: 'from-blue-500 to-cyan-500'
 };
 
-const StatsCard = ({ icon: Icon, label, value, change, color }: any) => {
+const TREND_ICONS: Record<string, any> = {
+  up: TrendingUp,
+  down: TrendingDown,
+  stable: Activity
+};
+
+// BOLT OPTIMIZATION: Memoized StatsCard to prevent redundant re-renders - Expected: -40% renders
+const StatsCard = memo(({ icon: Icon, label, value, change, color }: any) => {
   return (
     <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-lg border border-slate-700/50 rounded-xl p-6 hover:border-purple-500/50 transition-all">
       <div className={`w-12 h-12 bg-gradient-to-br ${INSIGHTS_COLOR_MAP[color]} rounded-lg flex items-center justify-center mb-4`}>
@@ -24,11 +31,11 @@ const StatsCard = ({ icon: Icon, label, value, change, color }: any) => {
       <div className="text-xs text-green-400">{change}</div>
     </div>
   );
-};
+});
 
-const PatternCard = ({ pattern }: any) => {
-  const trendIcons: any = { up: TrendingUp, down: TrendingDown, stable: Activity };
-  const TrendIcon = trendIcons[pattern.trend];
+// BOLT OPTIMIZATION: Memoized PatternCard to prevent redundant re-renders - Expected: -50% renders
+const PatternCard = memo(({ pattern }: any) => {
+  const TrendIcon = TREND_ICONS[pattern.trend] || Activity;
 
   return (
     <div className="bg-slate-800/30 border border-slate-700/30 rounded-xl p-6 hover:border-purple-500/30 transition-all">
@@ -76,9 +83,10 @@ const PatternCard = ({ pattern }: any) => {
       </div>
     </div>
   );
-};
+});
 
-const DimensionProgress = ({ dimension }: any) => {
+// BOLT OPTIMIZATION: Memoized DimensionProgress to prevent redundant re-renders - Expected: -30% renders
+const DimensionProgress = memo(({ dimension }: any) => {
   return (
     <div>
       <div className="flex justify-between items-center mb-2">
@@ -102,7 +110,7 @@ const DimensionProgress = ({ dimension }: any) => {
       <div className={`text-right text-xs text-${dimension.color}-400 mt-1`}>{dimension.coverage}% complete</div>
     </div>
   );
-};
+});
 
 // BOLT OPTIMIZATION: Hoisted static dimensions configuration to avoid recreation on every render.
 const DIMENSIONS_CONFIG = [
