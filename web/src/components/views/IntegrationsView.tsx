@@ -241,23 +241,37 @@ export const IntegrationsView: React.FC = () => {
       }
     } else {
       if (key === 'calendar' || key === 'drive') {
-        // Real Google OAuth flow
-        const rootUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
-        const options = {
-          redirect_uri: import.meta.env.VITE_GOOGLE_REDIRECT_URI || `${window.location.origin}/api/google-callback`,
-          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
-          access_type: 'offline',
-          response_type: 'code',
-          prompt: 'consent',
-          scope: [
-            'https://www.googleapis.com/auth/calendar.readonly',
-            'https://www.googleapis.com/auth/userinfo.email',
-          ].join(' '),
-          state: user?.id || '', // Pass profile ID in state
-        };
+        try {
+          // SENTINEL: Generate a secure, one-time nonce for OAuth state - CRITICAL
+          const { data, error } = await supabase
+            .from('oauth_nonces')
+            .insert({ profile_id: user?.id })
+            .select('id')
+            .single();
 
-        const qs = new URLSearchParams(options);
-        window.location.href = `${rootUrl}?${qs.toString()}`;
+          if (error) throw error;
+
+          // Real Google OAuth flow
+          const rootUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
+          const options = {
+            redirect_uri: import.meta.env.VITE_GOOGLE_REDIRECT_URI || `${window.location.origin}/api/google-callback`,
+            client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
+            access_type: 'offline',
+            response_type: 'code',
+            prompt: 'consent',
+            scope: [
+              'https://www.googleapis.com/auth/calendar.readonly',
+              'https://www.googleapis.com/auth/userinfo.email',
+            ].join(' '),
+            state: data.id, // SENTINEL: Use nonce ID instead of user ID
+          };
+
+          const qs = new URLSearchParams(options);
+          window.location.href = `${rootUrl}?${qs.toString()}`;
+        } catch (err) {
+          console.error('Failed to initiate OAuth flow', err);
+          setToast({ type: 'error', message: 'Failed to initiate secure connection. Please try again.' });
+        }
       } else {
         // Mock for others
         setSyncingKey(key);
@@ -319,8 +333,8 @@ export const IntegrationsView: React.FC = () => {
           <div className="flex-1">
             <div className="text-purple-300 font-bold text-lg mb-2">Privacy First Guarantee</div>
             <div className="text-purple-200/80 text-sm leading-relaxed">
-              All data is stored locally on your device in SQLite. We analyze metadata (when, how often) but <strong>never</strong> read content
-              (what was said, what's in files). Your personal information never leaves your device.
+              {/* SENTINEL: Corrected storage claim to be accurate for Web vs Mobile */}
+              All data is stored securely with multi-tenant isolation. Mobile data resides in local SQLite, while Web data is stored in our encrypted cloud vault. We analyze metadata but <strong>never</strong> read your private content.
             </div>
             <div className="mt-3 flex items-center space-x-4 text-xs text-purple-300">
               <div className="flex items-center space-x-1">
