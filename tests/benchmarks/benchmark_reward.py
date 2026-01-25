@@ -17,6 +17,8 @@ sys.modules["gymnasium.spaces"] = MagicMock()
 # sys.modules["numpy"] = np # Already imported
 sys.modules["pandas"] = MagicMock()
 
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../shared/rl')))
 from digital_twin_rl import PersonalLifeEnv
 
 def run_benchmark(n_projects, n_steps=100000):
