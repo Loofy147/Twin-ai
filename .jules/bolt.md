@@ -21,3 +21,9 @@
 ## 2026-01-23 - [React Memoization & Constant Hoisting]
 **Learning:** In large React components, declaring complex objects (icons, color maps, configurations) inside the component body causes them to be recreated on every render, breaking props equality for children and negating the benefits of `React.memo`. Additionally, when wrapping large components in `memo`, subtle syntax errors (like missing closing parentheses) can break the entire build and lead to confusing errors during HMR.
 **Action:** Always hoist static configuration objects to the module level. When memoizing components, verify the component signature and closing syntax carefully. Use `useCallback` for event handlers passed to memoized children to ensure stable references.
+
+## 2026-01-24 - [RL Reward Calculation Optimization]
+**ROI:** ~65% reduction in step time for 100 projects (expected: 50%)
+**Learning:** RL reward functions often contain O(N) loops over state entities (like projects or relationships). Since many reward components (like urgency and priority) are constant within an episode or change only on specific events, they can be cached at reset or updated incrementally. This is critical for training throughput as steps are called millions of times.
+**Pattern:** Move loop-based reward logic to a pre-calculation step in 'reset()' and use an O(1) cached lookup in 'step()'.
+**Gotcha:** If cached values depend on time-advancing state (like deadlines), ensure the simulation either has constant-time episodes or explicitly recalculates the cache when time-dependent variables change significantly.

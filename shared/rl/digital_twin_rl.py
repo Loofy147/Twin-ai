@@ -106,11 +106,30 @@ class PersonalLifeEnv(gym.Env):
         self.state = ScenarioManager.get_scenario(scenario_type, self.user_data)
         self.current_scenario = scenario_type
 
-        # BOLT OPTIMIZATION: Initialize cached observation metrics
+        # BOLT OPTIMIZATION: Initialize cached metrics for O(1) step/reward calculations
         self.cached_relationship_avg = np.mean([r['strength'] for r in self.state['relationships']]) if self.state['relationships'] else 0.5
         self.cached_project_progress = np.mean([p['progress'] for p in self.state['projects']]) if self.state['projects'] else 0.0
 
+        # Pre-calculate project urgencies and total neglect penalty sum
+        # BOLT: These are cached to enable O(1) reward calculation in the hot path.
+        self._update_neglect_penalty_cache()
+
         return self._get_obs(), {'scenario': scenario_type}
+
+    def _update_neglect_penalty_cache(self):
+        """
+        Calculates and caches the sum of neglect penalties for all projects.
+        Urgencies are based on deadline_days, which are currently constant per episode.
+        If deadline_days were to change during a step, this should be called again.
+        """
+        self.project_urgencies = []
+        self.cached_neglect_penalty_sum = 0.0
+        for p in self.state['projects']:
+            # Urgency formula: higher as deadline approaches (< 7 days)
+            urgency = max(0, (7 - p['deadline_days']) / 7) if p['deadline_days'] < 7 else 0
+            self.project_urgencies.append(urgency)
+            if urgency > 0:
+                self.cached_neglect_penalty_sum += 0.1 * urgency * p['priority']
 
     def _get_obs(self):
         # BOLT OPTIMIZATION: Use cached values to avoid O(N) list traversals in every observation
@@ -170,6 +189,9 @@ class PersonalLifeEnv(gym.Env):
             elif event_type == 'urgent_request' and self.state['projects']:
                 idx = params['project_idx'] % len(self.state['projects'])
                 self.state['projects'][idx]['priority'] = min(1.0, self.state['projects'][idx]['priority'] + params['priority_increase'])
+
+                # BOLT OPTIMIZATION: Refresh the neglect penalty cache when priority changes
+                self._update_neglect_penalty_cache()
 
             return event_type
         return None
@@ -241,19 +263,18 @@ class PersonalLifeEnv(gym.Env):
             reward += action_deltas['rel_delta'] * rel['priority']
 
         # Project progress: Urgent and Priority weighted
-        for i, proj in enumerate(self.state['projects']):
-            urgency = max(0, (7 - proj['deadline_days']) / 7) if proj['deadline_days'] < 7 else 0
-            priority = proj['priority']
-
-            # Penalty for neglecting urgent/high-priority projects
-            if urgency > 0 and action_type != 'work_on_project':
-                reward -= 0.1 * urgency * priority
-
-            # Bonus for progress on important things
-            if action_type == 'work_on_project' and i == action_deltas['project_idx']:
+        # BOLT OPTIMIZATION: Replaced O(N) loop with O(1) cached penalty and direct progress bonus access
+        if action_type != 'work_on_project':
+            reward -= self.cached_neglect_penalty_sum
+        else:
+            idx = action_deltas['project_idx']
+            if idx != -1:
+                proj = self.state['projects'][idx]
+                urgency = self.project_urgencies[idx]
                 delta = action_deltas['project_delta']
                 if delta > 0:
-                    reward += delta * priority * (1 + urgency)
+                    # Bonus for progress on important things
+                    reward += delta * proj['priority'] * (1 + urgency)
 
         return reward
 
