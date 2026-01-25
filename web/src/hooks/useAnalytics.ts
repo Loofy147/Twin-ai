@@ -6,6 +6,7 @@ export const useAnalytics = () => {
   const { user } = useAuth();
   const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [metrics, setMetrics] = useState<any>(null);
+  const [holisticAlignment, setHolisticAlignment] = useState<any>(null);
   const [weeklyActivity, setWeeklyActivity] = useState<any[]>([]);
   const [patterns, setPatterns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,6 +28,7 @@ export const useAnalytics = () => {
         // BOLT: Store the whole response to allow access to knowledge_graph and dimension_breakdown
         setAnalyticsData(analyticsResponse);
         setMetrics(analyticsResponse.metrics);
+        setHolisticAlignment(analyticsResponse.holistic_alignment);
         setPatterns(analyticsResponse.patterns || []);
         setWeeklyActivity(analyticsResponse.weekly_activity || []);
       }
@@ -43,5 +45,5 @@ export const useAnalytics = () => {
     loadData();
   }, [loadData]);
 
-  return { analyticsData, weeklyActivity, patterns, metrics, loading, error, reloadData: loadData };
+  return { analyticsData, weeklyActivity, patterns, metrics, holisticAlignment, loading, error, reloadData: loadData };
 };

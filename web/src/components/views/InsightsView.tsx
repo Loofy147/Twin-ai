@@ -167,9 +167,11 @@ export const InsightsView: React.FC = () => {
       return realGraphData.map((d: any) => ({
         dimension: d.dimension_name,
         aspect: d.aspect_name,
-        entity: d.entity_name,
-        type: d.entity_type,
-        strength: d.alignment_strength
+        entity: d.entity_name || 'Alignment',
+        type: d.entity_type || 'synergy',
+        strength: d.confidence || d.alignment_strength,
+        impact: d.impact_score,
+        isSynergy: d.entity_type === 'synergy' || !d.entity_name
       }));
     }
 
@@ -179,7 +181,8 @@ export const InsightsView: React.FC = () => {
       aspect: p.aspect,
       entity: p.dimension === 'Work Style' ? 'Productivity App' : p.dimension === 'Relationships' ? 'Family Dinner' : 'Side Project',
       type: p.dimension === 'Work Style' ? 'project' : p.dimension === 'Relationships' ? 'person' : 'dream',
-      strength: p.strength
+      strength: p.strength,
+      impact: p.confidence * p.strength
     }));
   }, [patterns, analyticsData]);
 

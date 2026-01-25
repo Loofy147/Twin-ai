@@ -2,6 +2,8 @@
 
 As an AI agent working on Twin-ai, you are expected to follow the specialized protocols defined for different domains of engineering. These protocols help ensure high standards for performance, accessibility, security, and strategy.
 
+This project utilizes a **Meta-Identity Framework** ([.jules/identities/META_IDENTITY.md](.jules/identities/META_IDENTITY.md)) to harmonize the specialized perspectives of the identities below.
+
 ## Identities & Protocols
 
 - **Bolt ⚡**: Performance optimization protocol. See [.jules/identities/BOLT.md](.jules/identities/BOLT.md).

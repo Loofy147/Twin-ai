@@ -56,6 +56,9 @@ class PersonalLifeEnv(gym.Env):
 
     def __init__(self, user_data: Dict, user_preferences: Dict, db_connection=None):
         super(PersonalLifeEnv, self).__init__()
+        # SENTINEL: Enforce strict profile isolation in RL environment
+        if not user_data or 'profile_id' not in user_data:
+            raise ValueError("RL Environment must be initialized with a valid profile_id")
 
         self.user_data = user_data
         self.preferences = user_preferences
@@ -348,8 +351,27 @@ class DataPipeline:
         }
 
     def extract_preferences(self, profile_id: int) -> Dict:
-        # Simplified for now, in real app would query 'patterns'
-        return {}
+        """
+        TUBER: Extract preferences from patterns to inform RL environment.
+        Expected: Allows the agent to start with user-aligned weights.
+        """
+        cursor = self.db.cursor()
+        cursor.execute("""
+            SELECT a.code, p.strength, p.confidence, p.impact_score
+            FROM patterns p
+            JOIN aspects a ON p.aspect_id = a.id
+            WHERE p.profile_id = ? AND p.confidence > 0.4
+        """, (profile_id,))
+        rows = cursor.fetchall()
+
+        preferences = {}
+        for r in rows:
+            preferences[r[0]] = {
+                'strength': r[1],
+                'confidence': r[2],
+                'impact': r[3]
+            }
+        return preferences
 
     def extract_relationships(self, profile_id: int) -> List[Dict]:
         # TUBER: Added profile_id filtering to prevent data leakage and ensure multi-tenant isolation
@@ -430,10 +452,15 @@ class DigitalTwinTrainer:
     def generate_validation_questions(self, model, n_questions: int = 5):
         """
         Generates validation questions based on agent decisions and inserts them into the database.
+        SENTINEL: Ensures questions are tied only to the current profile.
         """
         questions_generated = []
         for _ in range(n_questions):
             obs, info = self.env.reset()
+
+            # ORACLE: Validate observation integrity before processing
+            if not obs or 'energy' not in obs:
+                continue
             action, _states = model.predict(obs, deterministic=True)
 
             action_idx, target_idx, duration_idx, intensity_idx = action
@@ -444,15 +471,22 @@ class DigitalTwinTrainer:
             scenario_desc = f"Context: {info['scenario']}. Hour: {self.env.state['hour']:.1f}. Energy: {self.env.state['energy']:.2f}."
             agent_choice_desc = f"The agent decided to: {action_type} for {duration} minutes."
 
-            full_question_text = f"In this situation: {scenario_desc} {agent_choice_desc} Does this match what you would do?"
+            # PALETTE: Engaging and aspect-aware question text
+            # ORACLE: Link decision to potential long-term value
+            full_question_text = (
+                f"Your Digital Twin is learning from your {action_type} habits. "
+                f"Scenario: {info['scenario']}. Hour: {self.env.state['hour']:.1f}. "
+                f"It suggested: '{action_type} for {duration}m'. "
+                "Is this the 'you' that you want to cultivate?"
+            )
 
             # Insert into database
             try:
                 cursor = self.db.cursor()
                 cursor.execute("""
-                    INSERT OR IGNORE INTO questions (text, question_type, difficulty_level, primary_dimension_id, metadata)
-                    VALUES (?, 'RL_VALIDATION', 3, (SELECT id FROM dimensions WHERE name = 'Values' LIMIT 1), ?)
-                """, (full_question_text, json.dumps({
+                    INSERT OR IGNORE INTO questions (profile_id, text, question_type, difficulty_level, primary_dimension_id, metadata)
+                    VALUES (?, ?, 'RL_VALIDATION', 3, (SELECT id FROM dimensions WHERE name = 'Values' LIMIT 1), ?)
+                """, (self.profile_id, full_question_text, json.dumps({
                     'scenario': info['scenario'],
                     'agent_action': action_type,
                     'action_params': action.tolist()

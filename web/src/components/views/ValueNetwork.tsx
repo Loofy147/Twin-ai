@@ -10,43 +10,51 @@ const ENTITY_COLORS: Record<string, string> = {
 };
 
 // BOLT OPTIMIZATION: Memoized NetworkNode to prevent redundant re-renders - Expected: -60% renders in large graphs
-const NetworkNode = memo(({ dimension, aspect, entity, type, strength }: any) => {
+const NetworkNode = memo(({ dimension, aspect, entity, type, strength, impact, isSynergy }: any) => {
   return (
     <div
-      className="flex items-center p-3 bg-slate-800/40 border border-slate-700/50 rounded-lg hover:border-purple-500/50 transition-all group"
+      className={`flex items-center p-3 bg-slate-800/40 border ${isSynergy ? 'border-amber-500/30' : 'border-slate-700/50'} rounded-lg hover:border-purple-500/50 transition-all group focus-within:ring-2 focus-within:ring-purple-500/50 outline-none`}
       // PALETTE: Node accessibility - WCAG 1.3.1 (AA)
-      aria-label={`Alignment between ${dimension} value and ${entity} ${type}`}
+      aria-label={`${isSynergy ? 'Synergy' : 'Alignment'} between ${dimension} value and ${entity} ${type}`}
+      tabIndex={0}
     >
       <div className="flex-1">
         <div className="flex items-center text-xs text-slate-400 mb-1">
-          <span className="text-purple-400 font-bold">{dimension}</span>
+          <span className={`${isSynergy ? 'text-amber-400' : 'text-purple-400'} font-bold`}>{dimension}</span>
           <Share2 className="w-3 h-3 mx-2 opacity-50" aria-hidden="true" />
           <span>{aspect}</span>
         </div>
         <div className="text-white font-semibold flex items-center">
           {entity}
-          <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider ${ENTITY_COLORS[type] || 'text-slate-400 bg-slate-400/10'}`}>
-            {type}
+          <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider ${isSynergy ? 'text-amber-400 bg-amber-400/10' : (ENTITY_COLORS[type] || 'text-slate-400 bg-slate-400/10')}`}>
+            {isSynergy ? 'Synergy' : type}
           </span>
         </div>
       </div>
       <div className="text-right">
-        <div className="text-xs text-slate-500 mb-1">Alignment</div>
-        <div className="flex items-center">
+        <div className="text-[10px] text-slate-500 mb-1 uppercase tracking-tighter">
+          {isSynergy ? 'Synergy Score' : 'Alignment'}
+        </div>
+        <div className="flex items-center justify-end">
           <div
-            className="w-16 bg-slate-700 h-1.5 rounded-full mr-2"
+            className="w-16 bg-slate-700 h-1.5 rounded-full mr-2 hidden sm:block"
             role="progressbar"
             aria-valuenow={Math.round(strength * 100)}
             aria-valuemin={0}
             aria-valuemax={100}
           >
             <div
-              className="bg-purple-500 h-1.5 rounded-full transition-all duration-700"
+              className={`${isSynergy ? 'bg-amber-500' : 'bg-purple-500'} h-1.5 rounded-full transition-all duration-700`}
               style={{ width: `${strength * 100}%` }}
             />
           </div>
-          <span className="text-xs font-mono text-purple-300">{Math.round(strength * 100)}%</span>
+          <span className={`text-xs font-mono ${isSynergy ? 'text-amber-300' : 'text-purple-300'}`}>{Math.round(strength * 100)}%</span>
         </div>
+        {impact && (
+          <div className="text-[9px] text-slate-600 font-mono mt-0.5">
+            Impact: {impact.toFixed(2)}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -59,6 +67,8 @@ interface ValueNetworkProps {
     entity: string;
     type: string;
     strength: number;
+    impact?: number;
+    isSynergy?: boolean;
   }>;
 }
 
@@ -93,6 +103,8 @@ export const ValueNetwork: React.FC<ValueNetworkProps> = memo(({ data }) => {
             entity={node.entity}
             type={node.type}
             strength={node.strength}
+            impact={node.impact}
+            isSynergy={node.isSynergy}
           />
         ))
       ) : (

@@ -39,3 +39,7 @@
 ## 2026-01-25 - [Synergy Detection via O(N) Grouping]
 **Learning:** Detecting synergies (cross-dimension correlations) can easily become an O(N²) problem if checking every pair of patterns. By grouping patterns by dimension in a single pass (O(N)) and then comparing dimension-level stats, the search space for synergies is reduced from patterns to dimensions, which is much smaller.
 **Action:** Use intermediate aggregation or grouping (hash maps) to reduce the complexity of correlation detection algorithms.
+
+## 2026-01-25 - [Meta-Identity Synergy Optimization]
+**Learning:** Operating from a single identity (e.g., only Bolt) can lead to myopic optimizations that compromise security (Sentinel) or architecture (Oracle). By utilizing the Meta-Identity Framework, we can identify "Multi-Objective" optimizations. For example, the 'Alignment Engine' provides both a performance win (single RPC) and a strategic win (user value metric).
+**Action:** Use the Meta-Identity Council to peer-review architectural changes before implementation to ensure all project dimensions are balanced.

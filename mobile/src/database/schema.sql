@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS contexts (
 -- Questions: The question bank with multi-dimensional tags
 CREATE TABLE IF NOT EXISTS questions (
     id INTEGER PRIMARY KEY,
+    profile_id INTEGER REFERENCES profile(id), -- Optional: If NULL, it's a global question
     text TEXT NOT NULL UNIQUE,
     question_type VARCHAR(50), -- 'choice', 'ranking', 'scale', 'binary'
     difficulty_level INTEGER DEFAULT 1, -- 1-5
@@ -117,6 +118,7 @@ CREATE TABLE IF NOT EXISTS patterns (
     confidence REAL, -- 0.0 to 1.0
     strength REAL, -- How strong is this pattern
     evidence_count INTEGER, -- Number of supporting responses
+    impact_score REAL DEFAULT 0.0, -- Calculated value impact (Midas)
     first_detected TIMESTAMP,
     last_updated TIMESTAMP,
     metadata JSON -- Pattern details, conditions, etc.
