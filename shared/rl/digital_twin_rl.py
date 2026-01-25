@@ -352,7 +352,7 @@ class DataPipeline:
         return {}
 
     def extract_relationships(self, profile_id: int) -> List[Dict]:
-        # Aligned with 'entities' and 'entity_attributes' tables
+        # TUBER: Added profile_id filtering to prevent data leakage and ensure multi-tenant isolation
         cursor = self.db.cursor()
         cursor.execute("""
             SELECT
@@ -360,11 +360,11 @@ class DataPipeline:
                 MAX(CASE WHEN ea.attribute_type = 'trust' THEN ea.value END) as strength,
                 MAX(CASE WHEN ea.attribute_type = 'priority' THEN ea.value END) as priority
             FROM entities e
-            LEFT JOIN entity_attributes ea ON e.id = ea.entity_id
-            WHERE e.entity_type = 'person'
+            LEFT JOIN entity_attributes ea ON e.id = ea.entity_id AND ea.profile_id = ?
+            WHERE e.entity_type = 'person' AND e.profile_id = ?
             GROUP BY e.id
             LIMIT 20
-        """)
+        """, (profile_id, profile_id))
         rows = cursor.fetchall()
 
         relationships = []
@@ -380,12 +380,13 @@ class DataPipeline:
         return relationships
 
     def extract_projects(self, profile_id: int) -> List[Dict]:
+        # TUBER: Added profile_id filtering for multi-tenant isolation
         cursor = self.db.cursor()
         cursor.execute("""
             SELECT id, name, metadata
             FROM workflows
-            WHERE workflow_type = 'project' AND status = 'active'
-        """)
+            WHERE workflow_type = 'project' AND status = 'active' AND profile_id = ?
+        """, (profile_id,))
         rows = cursor.fetchall()
 
         projects = []
