@@ -155,7 +155,8 @@ CREATE TABLE IF NOT EXISTS entity_attributes (
     text_value VARCHAR(255), -- Text representation
     confidence REAL,
     last_updated TIMESTAMP,
-    metadata JSON
+    metadata JSON,
+    UNIQUE(profile_id, entity_id, attribute_type)
 );
 
 -- Workflows: Task pipelines and methodologies

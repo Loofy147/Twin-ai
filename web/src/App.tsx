@@ -81,7 +81,7 @@ const AppContent: React.FC = () => {
     );
   }
 
-  if (!user) {
+  if (!user && import.meta.env.VITE_MOCK_DATA_MODE !== 'true') {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-slate-900 border border-white/10 rounded-2xl p-8 shadow-2xl">
