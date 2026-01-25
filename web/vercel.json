@@ -88,7 +88,7 @@
     }
   ],
 
-  "regions": ["iad1", "sfo1"],
+  "regions": ["sfo1"],
 
   "functions": {
     "api/**/*.ts": {
