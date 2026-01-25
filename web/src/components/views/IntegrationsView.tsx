@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, memo } from 'react';
 import {
-  Shield, Users, Calendar, FileText, Phone, Lock, Database, Wifi, RefreshCw, Link2, Unlock, Check
+  Shield, Users, Calendar, FileText, Phone, Lock, Database, Wifi, RefreshCw, Link2, Unlock, Check, Github
 } from 'lucide-react';
 import { Toast } from '../common/Toast';
 import { useAuth } from '../../contexts/AuthContext';
@@ -155,6 +155,14 @@ const INTEGRATIONS_LIST = [
     description: 'Understand your communication preferences and energy',
     color: 'pink',
     features: ['Call frequency', 'Energy levels', 'Social patterns']
+  },
+  {
+    key: 'github',
+    name: 'GitHub',
+    icon: Github,
+    description: 'Analyze your development patterns and contributions',
+    color: 'purple',
+    features: ['Coding frequency', 'Tech stack analysis', 'Collaboration style']
   }
 ];
 
@@ -164,7 +172,8 @@ export const IntegrationsView: React.FC = () => {
     contacts: { connected: false, lastSync: null, count: 0, status: 'disconnected' },
     calendar: { connected: false, lastSync: null, count: 0, status: 'disconnected' },
     drive: { connected: false, lastSync: null, count: 0, status: 'disconnected' },
-    calls: { connected: false, lastSync: null, count: 0, status: 'disconnected' }
+    calls: { connected: false, lastSync: null, count: 0, status: 'disconnected' },
+    github: { connected: false, lastSync: null, count: 0, status: 'disconnected' }
   });
 
   const [toast, setToast] = useState<any>(null);
@@ -192,6 +201,7 @@ export const IntegrationsView: React.FC = () => {
         let key = '';
         if (token.integration_type === 'google_calendar') key = 'calendar';
         if (token.integration_type === 'google_drive') key = 'drive';
+        if (token.integration_type === 'github') key = 'github';
 
         if (key && newStatus[key]) {
           newStatus[key] = {
@@ -226,7 +236,8 @@ export const IntegrationsView: React.FC = () => {
       // Disconnect logic
       try {
         const type = key === 'calendar' ? 'google_calendar' :
-                     key === 'drive' ? 'google_drive' : key;
+                     key === 'drive' ? 'google_drive' :
+                     key === 'github' ? 'github' : key;
 
         await supabase
           .from('integration_tokens')
@@ -240,7 +251,7 @@ export const IntegrationsView: React.FC = () => {
         setToast({ type: 'error', message: `Failed to disconnect ${key}` });
       }
     } else {
-      if (key === 'calendar' || key === 'drive') {
+      if (key === 'calendar' || key === 'drive' || key === 'github') {
         try {
           // SENTINEL: Generate a secure, one-time nonce for OAuth state - CRITICAL
           const { data, error } = await supabase
@@ -251,23 +262,35 @@ export const IntegrationsView: React.FC = () => {
 
           if (error) throw error;
 
-          // Real Google OAuth flow
-          const rootUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
-          const options = {
-            redirect_uri: import.meta.env.VITE_GOOGLE_REDIRECT_URI || `${window.location.origin}/api/google-callback`,
-            client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
-            access_type: 'offline',
-            response_type: 'code',
-            prompt: 'consent',
-            scope: [
-              'https://www.googleapis.com/auth/calendar.readonly',
-              'https://www.googleapis.com/auth/userinfo.email',
-            ].join(' '),
-            state: data.id, // SENTINEL: Use nonce ID instead of user ID
-          };
+          if (key === 'github') {
+            const rootUrl = 'https://github.com/login/oauth/authorize';
+            const options = {
+              client_id: import.meta.env.VITE_GITHUB_CLIENT_ID || '',
+              redirect_uri: import.meta.env.VITE_GITHUB_REDIRECT_URI || `${window.location.origin}/api/github-callback`,
+              scope: 'read:user repo',
+              state: data.id,
+            };
+            const qs = new URLSearchParams(options);
+            window.location.href = `${rootUrl}?${qs.toString()}`;
+          } else {
+            // Real Google OAuth flow
+            const rootUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
+            const options = {
+              redirect_uri: import.meta.env.VITE_GOOGLE_REDIRECT_URI || `${window.location.origin}/api/google-callback`,
+              client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
+              access_type: 'offline',
+              response_type: 'code',
+              prompt: 'consent',
+              scope: [
+                'https://www.googleapis.com/auth/calendar.readonly',
+                'https://www.googleapis.com/auth/userinfo.email',
+              ].join(' '),
+              state: data.id, // SENTINEL: Use nonce ID instead of user ID
+            };
 
-          const qs = new URLSearchParams(options);
-          window.location.href = `${rootUrl}?${qs.toString()}`;
+            const qs = new URLSearchParams(options);
+            window.location.href = `${rootUrl}?${qs.toString()}`;
+          }
         } catch (err) {
           console.error('Failed to initiate OAuth flow', err);
           setToast({ type: 'error', message: 'Failed to initiate secure connection. Please try again.' });

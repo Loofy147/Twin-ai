@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Github } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { Navigation } from './components/common/Navigation';
@@ -27,6 +28,16 @@ const AppContent: React.FC = () => {
       }
     } catch (err) {
       // Error handled by context
+    }
+  };
+
+  const handleGitHubSignIn = async () => {
+    try {
+      // In a real app, this would use supabase.auth.signInWithOAuth
+      // but we'll use a placeholder for now to match the project style
+      console.log('GitHub Sign In initiated');
+    } catch (err) {
+      console.error('GitHub Sign In failed', err);
     }
   };
 
@@ -114,6 +125,25 @@ const AppContent: React.FC = () => {
               {isLogin ? 'Sign In' : 'Create Account'}
             </button>
           </form>
+
+          <div className="mt-6">
+            <div className="relative mb-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-white/10"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-slate-900 text-slate-400">Or continue with</span>
+              </div>
+            </div>
+
+            <button
+              onClick={handleGitHubSignIn}
+              className="w-full bg-slate-800 border border-white/10 hover:bg-slate-700 py-3 rounded-xl font-bold transition-all flex items-center justify-center space-x-2"
+            >
+              <Github className="w-5 h-5" />
+              <span>GitHub</span>
+            </button>
+          </div>
           <div className="mt-6 text-center">
             <button
               onClick={() => setIsLogin(!isLogin)}
