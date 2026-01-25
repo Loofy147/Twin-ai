@@ -31,6 +31,14 @@ The web application uses Supabase for cloud data storage, authentication, and ba
     pnpm run db:seed
     ```
 
+6.  **Prisma Setup (Optional but Recommended)**:
+    The project now includes Prisma for type-safe database access.
+    ```bash
+    cd web
+    # Ensure DATABASE_URL is set in .env
+    npx prisma db push
+    ```
+
 ## Web Application (Vercel)
 
 The web application is built with Vite and can be easily deployed to Vercel.
@@ -39,7 +47,7 @@ The web application is built with Vite and can be easily deployed to Vercel.
 2.  **Configure Project**:
     *   **Framework Preset**: Vite
     *   **Root Directory**: `web`
-    *   **Build Command**: `pnpm run build`
+    *   **Build Command**: `npm run build` (This automatically runs `prisma generate`)
     *   **Output Directory**: `dist`
 3.  **Environment Variables**:
     Add the following environment variables in the Vercel dashboard:

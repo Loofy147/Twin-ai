@@ -3,16 +3,21 @@
   "version": "1.0.0",
   "scripts": {
     "start": "vite",
-    "build": "vite build",
+    "build": "prisma generate && vite build",
+    "postinstall": "prisma generate",
     "db:migrate": "npx supabase db push",
-    "db:seed": "node scripts/seedSupabase.js"
+    "db:seed": "node scripts/seedSupabase.js",
+    "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push"
   },
   "dependencies": {
+    "@prisma/client": "^7.3.0",
     "@supabase/supabase-js": "^2.43.0",
     "@types/crypto-js": "^4.2.2",
     "crypto-js": "^4.2.0",
     "googleapis": "^140.0.0",
     "lucide-react": "^0.378.0",
+    "prisma": "^7.3.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0"
   },
