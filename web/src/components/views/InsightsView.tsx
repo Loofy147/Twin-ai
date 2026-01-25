@@ -1,8 +1,9 @@
 import React, { useMemo, memo } from 'react';
 import {
-  MessageSquare, Lightbulb, BarChart3, Target, Filter, TrendingUp, TrendingDown, Activity, CheckCircle, Loader2
+  MessageSquare, Lightbulb, BarChart3, Target, Filter, TrendingUp, TrendingDown, Activity, CheckCircle, Loader2, Share2
 } from 'lucide-react';
 import { useAnalytics } from '../../hooks/useAnalytics';
+import { ValueNetwork } from './ValueNetwork';
 
 // BOLT OPTIMIZATION: Hoisted shared configurations to avoid recreation on every render.
 const INSIGHTS_COLOR_MAP: Record<string, string> = {
@@ -125,9 +126,11 @@ export const InsightsView: React.FC = () => {
   const { patterns: dbPatterns, analyticsData, loading } = useAnalytics();
 
   const dimensions = useMemo(() => {
-    if (analyticsData && analyticsData.length > 0) {
+    // BOLT: Extract dimension breakdown from unified analytics response
+    const breakdown = (analyticsData as any)?.dimension_breakdown || [];
+    if (breakdown.length > 0) {
       const colors = ['purple', 'pink', 'cyan', 'green', 'blue'];
-      return analyticsData.map((d: any, i: number) => ({
+      return breakdown.map((d: any, i: number) => ({
         name: d.name,
         coverage: d.percentage,
         responses: d.count,
@@ -149,12 +152,36 @@ export const InsightsView: React.FC = () => {
       }));
     }
     return [
-    { dimension: 'Values', aspect: 'Freedom', confidence: 0.92, strength: 0.88, evidence: 47, trend: 'up' },
-    { dimension: 'Work Style', aspect: 'Deep Work', confidence: 0.85, strength: 0.91, evidence: 38, trend: 'up' },
-    { dimension: 'Relationships', aspect: 'Trust', confidence: 0.78, strength: 0.84, evidence: 52, trend: 'stable' },
+      { dimension: 'Values', aspect: 'Freedom', confidence: 0.92, strength: 0.88, evidence: 47, trend: 'up' },
+      { dimension: 'Work Style', aspect: 'Deep Work', confidence: 0.85, strength: 0.91, evidence: 38, trend: 'up' },
+      { dimension: 'Relationships', aspect: 'Trust', confidence: 0.78, strength: 0.84, evidence: 52, trend: 'stable' },
       { dimension: 'Decision Making', aspect: 'Data Driven', confidence: 0.81, strength: 0.76, evidence: 29, trend: 'up' }
     ];
   }, [dbPatterns]);
+
+  // BOLT + TUBER: Memoized Knowledge Graph data processing
+  const knowledgeGraphData = useMemo(() => {
+    // Check if we have real graph data from the analytics RPC
+    const realGraphData = (analyticsData as any)?.knowledge_graph;
+    if (realGraphData && realGraphData.length > 0) {
+      return realGraphData.map((d: any) => ({
+        dimension: d.dimension_name,
+        aspect: d.aspect_name,
+        entity: d.entity_name,
+        type: d.entity_type,
+        strength: d.alignment_strength
+      }));
+    }
+
+    // Fallback: Mocking based on detected patterns for the graphic
+    return patterns.map(p => ({
+      dimension: p.dimension,
+      aspect: p.aspect,
+      entity: p.dimension === 'Work Style' ? 'Productivity App' : p.dimension === 'Relationships' ? 'Family Dinner' : 'Side Project',
+      type: p.dimension === 'Work Style' ? 'project' : p.dimension === 'Relationships' ? 'person' : 'dream',
+      strength: p.strength
+    }));
+  }, [patterns, analyticsData]);
 
   if (loading) {
     return (
@@ -198,12 +225,22 @@ export const InsightsView: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-lg border border-slate-700/50 rounded-2xl p-8">
-            <h3 className="text-2xl font-bold text-white mb-6">Dimension Coverage</h3>
-            <div className="space-y-6">
-              {dimensions.map((dim, idx) => (
-                <DimensionProgress key={idx} dimension={dim} />
-              ))}
+          <div className="space-y-8">
+            <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-lg border border-slate-700/50 rounded-2xl p-8">
+              <h3 className="text-2xl font-bold text-white mb-6">Dimension Coverage</h3>
+              <div className="space-y-6">
+                {dimensions.map((dim, idx) => (
+                  <DimensionProgress key={idx} dimension={dim} />
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-lg border border-slate-700/50 rounded-2xl p-8">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-white">Value Graphic</h3>
+                <Share2 className="w-5 h-5 text-purple-400" />
+              </div>
+              <ValueNetwork data={knowledgeGraphData} />
             </div>
           </div>
         </div>

@@ -35,3 +35,7 @@
 ## 2026-01-25 - [SQLite UPSERT with Multi-Tenancy]
 **Learning:** Implementing `INSERT ... ON CONFLICT` for multi-tenant tables requires the conflict target (e.g., `profile_id, entity_id, attribute_type`) to have a matching UNIQUE index or constraint. Without it, SQLite cannot resolve the conflict, and the query will fail even if the columns exist.
 **Action:** When adding `profile_id` to existing tables for isolation, always update the unique constraints to include the `profile_id` to support safe UPSERT operations.
+
+## 2026-01-25 - [Synergy Detection via O(N) Grouping]
+**Learning:** Detecting synergies (cross-dimension correlations) can easily become an O(N²) problem if checking every pair of patterns. By grouping patterns by dimension in a single pass (O(N)) and then comparing dimension-level stats, the search space for synergies is reduced from patterns to dimensions, which is much smaller.
+**Action:** Use intermediate aggregation or grouping (hash maps) to reduce the complexity of correlation detection algorithms.

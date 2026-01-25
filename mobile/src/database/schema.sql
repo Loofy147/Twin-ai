@@ -260,10 +260,31 @@ CREATE INDEX IF NOT EXISTS idx_questions_dimension ON questions(primary_dimensio
 CREATE INDEX IF NOT EXISTS idx_answer_options_question ON answer_options(question_id);
 CREATE INDEX IF NOT EXISTS idx_answer_options_aspect ON answer_options(aspect_id);
 CREATE INDEX IF NOT EXISTS idx_aspects_dimension ON aspects(dimension_id);
+CREATE INDEX IF NOT EXISTS idx_entity_attrs_aspect ON entity_attributes(aspect_id);
 
 -- ============================================
 -- VIEWS for Common Queries
 -- ============================================
+
+-- TUBER: Knowledge Graph View - Expected: Simplifies complex graph joins for UI
+DROP VIEW IF EXISTS v_knowledge_graph;
+CREATE VIEW v_knowledge_graph AS
+SELECT
+    p.profile_id,
+    d.name as dimension_name,
+    a.name as aspect_name,
+    p.confidence as pattern_confidence,
+    p.strength as pattern_strength,
+    e.name as entity_name,
+    e.entity_type,
+    ea.attribute_type,
+    ea.value as attribute_value
+FROM patterns p
+JOIN aspects a ON p.aspect_id = a.id
+JOIN dimensions d ON a.dimension_id = d.id
+LEFT JOIN entity_attributes ea ON ea.aspect_id = a.id AND ea.profile_id = p.profile_id
+LEFT JOIN entities e ON ea.entity_id = e.id
+WHERE p.confidence > 0.3;
 
 -- Current profile state with latest patterns
 DROP VIEW IF EXISTS v_current_profile;

@@ -524,6 +524,7 @@ class EnhancedDatabaseService {
     dimension_breakdown: any[];
     weekly_activity: any[];
     patterns: any[];
+    knowledge_graph?: any[];
     timestamp: string;
   }> {
     const cacheKey = `analytics:${profileId}:${days}`;
@@ -674,7 +675,7 @@ class EnhancedDatabaseService {
     const fallbacks: Record<string, any> = {
       getProfile: { id: '', total_responses: 0, engagement_score: 0, metadata: {} },
       getQuestions: { data: [], count: 0, error: null },
-      getAnalytics: { metrics: {}, dimension_breakdown: [], weekly_activity: [] },
+      getAnalytics: { metrics: {}, dimension_breakdown: [], weekly_activity: [], patterns: [], knowledge_graph: [] },
       getPatterns: []
     };
 

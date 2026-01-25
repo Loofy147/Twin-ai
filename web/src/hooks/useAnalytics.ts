@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 export const useAnalytics = () => {
   const { user } = useAuth();
-  const [analyticsData, setAnalyticsData] = useState<any[]>([]);
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [metrics, setMetrics] = useState<any>(null);
   const [weeklyActivity, setWeeklyActivity] = useState<any[]>([]);
   const [patterns, setPatterns] = useState<any[]>([]);
@@ -24,7 +24,8 @@ export const useAnalytics = () => {
       const analyticsResponse = await databaseService.getAnalytics(user.id);
 
       if (analyticsResponse) {
-        setAnalyticsData(analyticsResponse.dimension_breakdown || []);
+        // BOLT: Store the whole response to allow access to knowledge_graph and dimension_breakdown
+        setAnalyticsData(analyticsResponse);
         setMetrics(analyticsResponse.metrics);
         setPatterns(analyticsResponse.patterns || []);
         setWeeklyActivity(analyticsResponse.weekly_activity || []);
