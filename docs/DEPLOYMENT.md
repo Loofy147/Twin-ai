@@ -31,6 +31,45 @@ The web application uses Supabase for cloud data storage, authentication, and ba
     pnpm run db:seed
     ```
 
+## CI/CD Pipeline (GitHub Actions)
+
+The project includes automated CI/CD workflows in `.github/workflows/`.
+
+### 1. Continuous Integration (CI)
+Runs on every push and PR to `main`:
+*   Lints code (`web` and `mobile`).
+*   Typechecks TypeScript.
+*   Runs unit tests.
+
+### 2. Continuous Deployment (CD)
+Runs on every push to `main`:
+*   Deploys the web application to **Vercel**.
+*   Pushes database migrations to **Supabase**.
+*   Deploys Edge Functions to **Supabase**.
+
+### Required GitHub Secrets
+To enable automated deployment, add the following secrets to your GitHub repository:
+*   `VERCEL_TOKEN`: Vercel Personal Access Token.
+*   `VERCEL_ORG_ID`: Vercel Organization ID.
+*   `VERCEL_PROJECT_ID`: Vercel Project ID.
+*   `SUPABASE_ACCESS_TOKEN`: Supabase Personal Access Token.
+*   `SUPABASE_PROJECT_REF`: Your Supabase Project Reference.
+*   `SUPABASE_DB_PASSWORD`: Your Supabase Database Password.
+
+### 3. GitHub OAuth Setup
+To enable GitHub integration, configure a GitHub OAuth App and add these to Vercel/Supabase:
+*   `VITE_GITHUB_CLIENT_ID`
+*   `GITHUB_CLIENT_SECRET` (Securely in Supabase secrets)
+*   `VITE_GITHUB_REDIRECT_URI`: `https://your-app.vercel.app/api/github-callback`
+
+6.  **Prisma Setup (Optional but Recommended)**:
+    The project now includes Prisma for type-safe database access.
+    ```bash
+    cd web
+    # Ensure DATABASE_URL is set in .env
+    npx prisma db push
+    ```
+
 ## Web Application (Vercel)
 
 The web application is built with Vite and can be easily deployed to Vercel.
@@ -39,7 +78,7 @@ The web application is built with Vite and can be easily deployed to Vercel.
 2.  **Configure Project**:
     *   **Framework Preset**: Vite
     *   **Root Directory**: `web`
-    *   **Build Command**: `pnpm run build`
+    *   **Build Command**: `npm run build` (This automatically runs `prisma generate`)
     *   **Output Directory**: `dist`
 3.  **Environment Variables**:
     Add the following environment variables in the Vercel dashboard:

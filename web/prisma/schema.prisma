@@ -1,0 +1,319 @@
+// web/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Profile {
+  id               String   @id
+  created_at       DateTime @default(now()) @db.Timestamptz
+  updated_at       DateTime @default(now()) @updatedAt @db.Timestamptz
+  total_responses  Int      @default(0)
+  engagement_score Float    @default(0.0) @db.Real
+  learning_version Int      @default(1)
+  metadata         Json?
+
+  responses         Response[]
+  patterns          Pattern[]
+  entity_attributes EntityAttribute[]
+  recommendations   Recommendation[]
+  datasets          Dataset[]
+  snapshots         LearningSnapshot[]
+  audit_logs        AuditLog[]
+
+  @@map("profile")
+}
+
+model Dimension {
+  id                  BigInt  @id @default(autoincrement())
+  name                String  @unique
+  parent_dimension_id BigInt?
+  weight              Float   @default(1.0) @db.Real
+  description         String?
+  metadata            Json?
+
+  parent    Dimension?  @relation("DimensionToParent", fields: [parent_dimension_id], references: [id])
+  children  Dimension[] @relation("DimensionToParent")
+  questions Question[]
+  patterns  Pattern[]
+  aspects   Aspect[]
+
+  @@map("dimensions")
+}
+
+model Aspect {
+  id           BigInt  @id @default(autoincrement())
+  dimension_id BigInt
+  name         String
+  code         String  @unique
+  description  String?
+  metadata     Json?
+
+  dimension         Dimension         @relation(fields: [dimension_id], references: [id])
+  questions         QuestionAspect[]
+  answer_options    AnswerOption[]
+  patterns          Pattern[]
+  entity_attributes EntityAttribute[]
+
+  @@unique([dimension_id, name])
+  @@map("aspects")
+}
+
+model Context {
+  id           BigInt  @id @default(autoincrement())
+  context_type String
+  key          String
+  value        String?
+  metadata     Json?
+
+  responses ResponseContext[]
+
+  @@unique([context_type, key, value])
+  @@map("contexts")
+}
+
+model Question {
+  id                   BigInt   @id @default(autoincrement())
+  text                 String   @unique
+  question_type        String?
+  difficulty_level     Int      @default(1)
+  engagement_factor    Float    @default(1.0) @db.Real
+  primary_dimension_id BigInt?
+  metadata             Json?
+  active               Boolean  @default(true)
+  times_asked          Int      @default(0)
+  avg_response_time    Float?   @db.Real
+  created_at           DateTime @default(now()) @db.Timestamptz
+
+  dimension Dimension?       @relation(fields: [primary_dimension_id], references: [id])
+  options   AnswerOption[]
+  responses Response[]
+  aspects   QuestionAspect[]
+
+  @@map("questions")
+}
+
+model QuestionAspect {
+  question_id BigInt
+  aspect_id   BigInt
+  weight      Float  @default(1.0) @db.Real
+
+  question Question @relation(fields: [question_id], references: [id])
+  aspect   Aspect   @relation(fields: [aspect_id], references: [id])
+
+  @@id([question_id, aspect_id])
+  @@map("question_aspects")
+}
+
+model AnswerOption {
+  id           BigInt  @id @default(autoincrement())
+  question_id  BigInt
+  text         String
+  option_order Int?
+  aspect_id    BigInt?
+  weight       Float   @default(1.0) @db.Real
+  metadata     Json?
+
+  question  Question   @relation(fields: [question_id], references: [id])
+  aspect    Aspect?    @relation(fields: [aspect_id], references: [id])
+  responses Response[]
+
+  @@map("answer_options")
+}
+
+model Response {
+  id               BigInt   @id @default(autoincrement())
+  profile_id       String
+  question_id      BigInt
+  answer_option_id BigInt
+  response_type    String?
+  response_time_ms Int?
+  confidence_level Float?   @db.Real
+  created_at       DateTime @default(now()) @db.Timestamptz
+  session_id       String?
+  metadata         Json?
+
+  profile       Profile           @relation(fields: [profile_id], references: [id])
+  question      Question          @relation(fields: [question_id], references: [id])
+  answer_option AnswerOption      @relation(fields: [answer_option_id], references: [id])
+  contexts      ResponseContext[]
+
+  @@map("responses")
+}
+
+model ResponseContext {
+  response_id BigInt
+  context_id  BigInt
+
+  response Response @relation(fields: [response_id], references: [id])
+  context  Context  @relation(fields: [context_id], references: [id])
+
+  @@id([response_id, context_id])
+  @@map("response_contexts")
+}
+
+model Pattern {
+  id             BigInt    @id @default(autoincrement())
+  profile_id     String
+  pattern_type   String?
+  dimension_id   BigInt?
+  aspect_id      BigInt?
+  confidence     Float?    @db.Real
+  strength       Float?    @db.Real
+  evidence_count Int?
+  first_detected DateTime? @db.Timestamptz
+  last_updated   DateTime? @db.Timestamptz
+  metadata       Json?
+
+  profile   Profile    @relation(fields: [profile_id], references: [id])
+  dimension Dimension? @relation(fields: [dimension_id], references: [id])
+  aspect    Aspect?    @relation(fields: [aspect_id], references: [id])
+
+  @@map("patterns")
+}
+
+model Entity {
+  id          BigInt   @id @default(autoincrement())
+  entity_type String?
+  name        String
+  description String?
+  created_at  DateTime @default(now()) @db.Timestamptz
+  metadata    Json?
+
+  attributes EntityAttribute[]
+
+  @@unique([name, entity_type])
+  @@map("entities")
+}
+
+model EntityAttribute {
+  id             BigInt    @id @default(autoincrement())
+  profile_id     String
+  entity_id      BigInt
+  attribute_type String?
+  aspect_id      BigInt?
+  value          Float?    @db.Real
+  text_value     String?
+  confidence     Float?    @db.Real
+  last_updated   DateTime? @db.Timestamptz
+  metadata       Json?
+
+  profile Profile @relation(fields: [profile_id], references: [id])
+  entity  Entity  @relation(fields: [entity_id], references: [id])
+  aspect  Aspect? @relation(fields: [aspect_id], references: [id])
+
+  @@map("entity_attributes")
+}
+
+model Workflow {
+  id                     BigInt   @id @default(autoincrement())
+  name                   String
+  workflow_type          String?
+  status                 String?
+  created_from_responses Boolean? @default(false)
+  metadata               Json?
+
+  steps WorkflowStep[]
+
+  @@map("workflows")
+}
+
+model WorkflowStep {
+  id           BigInt    @id @default(autoincrement())
+  workflow_id  BigInt
+  step_order   Int?
+  description  String?
+  status       String?
+  due_date     DateTime? @db.Timestamptz
+  completed_at DateTime? @db.Timestamptz
+  metadata     Json?
+
+  workflow Workflow @relation(fields: [workflow_id], references: [id])
+
+  @@map("workflow_steps")
+}
+
+model Recommendation {
+  id                   BigInt    @id @default(autoincrement())
+  profile_id           String
+  recommendation_type  String?
+  title                String?
+  description          String?
+  priority             Float?    @db.Real
+  confidence           Float?    @db.Real
+  based_on_pattern_ids Json?
+  status               String?
+  created_at           DateTime? @db.Timestamptz
+  responded_at         DateTime? @db.Timestamptz
+  metadata             Json?
+
+  profile Profile @relation(fields: [profile_id], references: [id])
+
+  @@map("recommendations")
+}
+
+model Dataset {
+  id                BigInt    @id @default(autoincrement())
+  profile_id        String
+  name              String
+  dataset_type      String?
+  description       String?
+  schema_definition Json?
+  row_count         Int?      @default(0)
+  created_at        DateTime? @db.Timestamptz
+  updated_at        DateTime? @db.Timestamptz
+  metadata          Json?
+
+  profile Profile         @relation(fields: [profile_id], references: [id])
+  records DatasetRecord[]
+
+  @@map("datasets")
+}
+
+model DatasetRecord {
+  id          BigInt    @id @default(autoincrement())
+  dataset_id  BigInt
+  record_data Json?
+  created_at  DateTime? @db.Timestamptz
+  metadata    Json?
+
+  dataset Dataset @relation(fields: [dataset_id], references: [id])
+
+  @@map("dataset_records")
+}
+
+model LearningSnapshot {
+  id              BigInt    @id @default(autoincrement())
+  profile_id      String
+  snapshot_date   DateTime? @db.Timestamptz
+  total_responses Int?
+  pattern_count   Int?
+  top_patterns    Json?
+  profile_state   Json?
+  insights        Json?
+  metadata        Json?
+
+  profile Profile @relation(fields: [profile_id], references: [id])
+
+  @@map("learning_snapshots")
+}
+
+model AuditLog {
+  id            BigInt   @id @default(autoincrement())
+  profile_id    String?
+  action        String
+  resource_type String?
+  resource_id   String?
+  ip_address    String?
+  user_agent    String?
+  metadata      Json?
+  created_at    DateTime @default(now()) @db.Timestamptz
+
+  profile Profile? @relation(fields: [profile_id], references: [id])
+
+  @@map("audit_log")
+}
