@@ -22,11 +22,11 @@ This checklist defines the critical steps required to move from the current **In
 - [ ] **Error Tracking**: Integrate Sentry for frontend and backend edge functions.
 - [ ] **Analytics**: Implement PostHog or similar for privacy-preserving usage analytics.
 - [ ] **Uptime Monitoring**: Set up health checks for the database and web app.
-- [ ] **Audit Logs**: Finalize the audit logging trigger for sensitive security events.
+- [x] **Audit Logs**: Finalize the audit logging trigger for sensitive security events.
 
 ### 3. Data Integrity & Migration
 - [ ] **Database Backups**: Enable point-in-time recovery on Supabase.
-- [ ] **Migration Versioning**: Move from single migration file to versioned migration scripts.
+- [x] **Migration Versioning**: Move from single migration file to versioned migration scripts.
 - [ ] **Rate Limiting**: Fine-tune rate limiting thresholds based on initial traffic.
 
 ## 🟢 Phase 3: Public Launch (3+ Months)
@@ -45,5 +45,5 @@ This checklist defines the critical steps required to move from the current **In
 1. [ ] Run `npx vitest run tests/isolation.test.ts` on staging.
 2. [ ] Verify "Delete Account" works on 3 test accounts with varying data volumes.
 3. [ ] Confirm Google Calendar sync works with a "real" (non-test) Google account.
-4. [ ] Check all icons have ARIA labels.
+4. [x] Check all icons have ARIA labels.
 5. [ ] Verify zero API keys are committed to the repository.

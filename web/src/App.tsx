@@ -82,23 +82,29 @@ const AppContent: React.FC = () => {
           </div>
           <form onSubmit={handleAuth} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Email</label>
+              {/* PALETTE: Explicit label association - WCAG: 1.3.1 (A) */}
+              <label htmlFor="auth-email" className="block text-sm font-medium text-slate-400 mb-1">Email</label>
               <input
+                id="auth-email"
                 type="email"
                 value={authEmail}
                 onChange={(e) => setAuthEmail(e.target.value)}
                 className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 outline-none focus:border-purple-500 transition-colors"
                 required
+                aria-required="true"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Password</label>
+              {/* PALETTE: Explicit label association - WCAG: 1.3.1 (A) */}
+              <label htmlFor="auth-password" className="block text-sm font-medium text-slate-400 mb-1">Password</label>
               <input
+                id="auth-password"
                 type="password"
                 value={authPassword}
                 onChange={(e) => setAuthPassword(e.target.value)}
                 className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 outline-none focus:border-purple-500 transition-colors"
                 required
+                aria-required="true"
               />
             </div>
             <button
@@ -145,12 +151,17 @@ const AppContent: React.FC = () => {
             </div>
             <form onSubmit={handleSubscribe} className="relative">
               <div className="flex gap-2">
+                {/* PALETTE: Screen reader label for input - WCAG: 3.3.2 (A) */}
+                <label htmlFor="footer-subscribe" className="sr-only">Email address</label>
                 <input
+                  id="footer-subscribe"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
                   className={`flex-1 bg-slate-800 border ${emailError ? 'border-red-500' : 'border-white/10'} rounded-lg px-4 py-2 outline-none focus:border-purple-500 transition-colors`}
+                  aria-invalid={!!emailError}
+                  aria-describedby={emailError ? "subscribe-error" : undefined}
                 />
                 <button
                   type="submit"
@@ -159,7 +170,12 @@ const AppContent: React.FC = () => {
                   {subscribed ? 'Subscribed!' : 'Subscribe'}
                 </button>
               </div>
-              {emailError && <p className="absolute -bottom-6 left-0 text-xs text-red-500">{emailError}</p>}
+              {emailError && (
+                /* PALETTE: Immediate feedback for validation errors - WCAG: 4.1.3 (AA) */
+                <p id="subscribe-error" className="absolute -bottom-6 left-0 text-xs text-red-500" role="alert">
+                  {emailError}
+                </p>
+              )}
             </form>
           </div>
           <div className="mt-12 pt-8 border-t border-white/5 text-center text-slate-500 text-sm">
