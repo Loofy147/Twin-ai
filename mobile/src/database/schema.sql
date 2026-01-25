@@ -135,12 +135,13 @@ WHERE dimension_id IS NULL AND aspect_id IS NULL;
 -- Relationships: People, projects, entities
 CREATE TABLE IF NOT EXISTS entities (
     id INTEGER PRIMARY KEY,
+    profile_id INTEGER REFERENCES profile(id),
     entity_type VARCHAR(50), -- 'person', 'project', 'job', 'dream', 'hobby', 'place'
     name VARCHAR(255) NOT NULL,
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     metadata JSON,
-    UNIQUE(name, entity_type)
+    UNIQUE(profile_id, name, entity_type)
 );
 
 -- Entity Attributes: How you feel/think about entities
@@ -160,6 +161,7 @@ CREATE TABLE IF NOT EXISTS entity_attributes (
 -- Workflows: Task pipelines and methodologies
 CREATE TABLE IF NOT EXISTS workflows (
     id INTEGER PRIMARY KEY,
+    profile_id INTEGER REFERENCES profile(id),
     name VARCHAR(255) NOT NULL,
     workflow_type VARCHAR(50), -- 'project', 'habit', 'learning', 'decision'
     status VARCHAR(50), -- 'active', 'paused', 'completed', 'abandoned'
@@ -247,6 +249,10 @@ CREATE INDEX IF NOT EXISTS idx_entity_attrs_profile ON entity_attributes(profile
 CREATE INDEX IF NOT EXISTS idx_entity_attrs_entity ON entity_attributes(entity_id);
 CREATE INDEX IF NOT EXISTS idx_recommendations_profile ON recommendations(profile_id);
 CREATE INDEX IF NOT EXISTS idx_recommendations_status ON recommendations(status);
+
+-- TUBER OPTIMIZATION: Multi-tenant isolation and performance indexes
+CREATE INDEX IF NOT EXISTS idx_entity_attrs_profile_type ON entity_attributes(profile_id, attribute_type);
+CREATE INDEX IF NOT EXISTS idx_workflows_profile_type_status ON workflows(profile_id, workflow_type, status);
 
 -- BOLT OPTIMIZATION: Additional indexes for common joins and filtering
 CREATE INDEX IF NOT EXISTS idx_questions_dimension ON questions(primary_dimension_id);

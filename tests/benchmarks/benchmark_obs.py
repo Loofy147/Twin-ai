@@ -17,13 +17,15 @@ sys.modules["gymnasium.spaces"] = MagicMock()
 sys.modules["numpy"] = np
 sys.modules["pandas"] = MagicMock()
 
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../shared/rl')))
 from digital_twin_rl import PersonalLifeEnv
 
 def benchmark_obs():
     n_entities = 500
     user_data = {
         'profile_id': 'user1',
-        'projects': [{'id': i, 'progress': 0.1} for i in range(n_entities)],
+        'projects': [{'id': i, 'progress': 0.1, 'deadline_days': 5, 'priority': 0.8} for i in range(n_entities)],
         'relationships': [{'id': i, 'strength': 0.5} for i in range(n_entities)]
     }
 
