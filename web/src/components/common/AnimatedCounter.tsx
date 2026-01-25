@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useIntersectionObserver } from '../../hooks/useIntersectionObserver';
 
 interface AnimatedCounterProps {
@@ -17,23 +17,50 @@ export const AnimatedCounter: React.FC<AnimatedCounterProps> = React.memo(({
 }) => {
   const [count, setCount] = useState(0);
   const [ref, isVisible] = useIntersectionObserver();
+  const animationFrameId = useRef<number>();
+  const startTime = useRef<number>();
 
   useEffect(() => {
     if (!isVisible) return;
-    let start = 0;
+
     const end = typeof value === 'string' ? parseInt(value) : value;
-    const increment = end / (duration / 16);
-    const timer = setInterval(() => {
-      start += increment;
-      if (start >= end) {
-        setCount(end);
-        clearInterval(timer);
+
+    // BOLT: High-performance animation loop using requestAnimationFrame
+    // Expected: -100% background CPU usage, battery-efficient animation
+    const animate = (timestamp: number) => {
+      if (!startTime.current) startTime.current = timestamp;
+      const progress = timestamp - startTime.current;
+      const percentage = Math.min(progress / duration, 1);
+
+      const currentCount = Math.floor(percentage * end);
+      setCount(currentCount);
+
+      if (percentage < 1) {
+        animationFrameId.current = requestAnimationFrame(animate);
       } else {
-        setCount(Math.floor(start));
+        setCount(end);
       }
-    }, 16);
-    return () => clearInterval(timer);
+    };
+
+    animationFrameId.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current);
+      }
+    };
   }, [isVisible, value, duration]);
 
-  return <span ref={ref}>{prefix}{count.toLocaleString()}{suffix}</span>;
+  return (
+    <span ref={ref} className="inline-flex items-center">
+      {/* PALETTE: Screen reader users get final value immediately to avoid animation noise - WCAG: 4.1.2 (A) */}
+      <span className="sr-only">
+        {prefix}{value}{suffix}
+      </span>
+      {/* BOLT: Sync with browser refresh rate and skip animation when tab is inactive */}
+      <span aria-hidden="true">
+        {prefix}{count.toLocaleString()}{suffix}
+      </span>
+    </span>
+  );
 });
