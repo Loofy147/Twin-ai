@@ -57,10 +57,37 @@ class PatternDetector {
 
         runUpdates(aspectFrequency);
 
+        // SENTINEL: Detect potentially sensitive data patterns
+        await this.detectPrivacyPatterns(db, profileId);
+
         // TUBER: Trigger synergy detection after response analysis
         await this.detectSynergies(db, profileId);
 
         return aspectFrequency.length;
+    }
+
+    /**
+     * SENTINEL: Detect privacy-sensitive patterns
+     * Identifies dimensions with high data density that may need protection.
+     */
+    async detectPrivacyPatterns(db, profileId) {
+        const sensitiveDimensions = [3, 8, 12]; // Relationships, Risk, Financial
+
+        const sensitiveResult = db.prepare(`
+            SELECT COUNT(*) as count
+            FROM patterns
+            WHERE profile_id = ? AND dimension_id IN (${sensitiveDimensions.join(',')})
+              AND confidence > 0.7
+        `).get(profileId);
+
+        if (sensitiveResult && sensitiveResult.count > 2) {
+            db.prepare(`
+                INSERT INTO patterns (profile_id, pattern_type, confidence, strength, last_updated)
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(profile_id, pattern_type) WHERE dimension_id IS NULL AND aspect_id IS NULL
+                DO UPDATE SET confidence = excluded.confidence, last_updated = CURRENT_TIMESTAMP
+            `).run(profileId, 'privacy_sensitivity_high', 0.9, 1.0);
+        }
     }
 
     /**

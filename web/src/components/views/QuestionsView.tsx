@@ -223,7 +223,12 @@ export const QuestionsView: React.FC = () => {
               </h3>
             </div>
 
-            <div className="space-y-3">
+            <div
+              className="space-y-3"
+              // PALETTE: Group interactive items for screen readers - WCAG 1.3.1 (AA)
+              role="radiogroup"
+              aria-label="Answer options"
+            >
               {(question.options || []).map((option: any) => (
                 <OptionButton
                   key={option.id}
@@ -236,7 +241,11 @@ export const QuestionsView: React.FC = () => {
             </div>
 
             <div className="mt-8 flex items-center justify-between">
-              <button className="text-slate-400 hover:text-white transition-colors text-sm font-medium flex items-center space-x-2">
+              <button
+                // PALETTE: Semantic button with explicit action - WCAG 4.1.2 (A)
+                aria-label="Skip this question and show the next one"
+                className="text-slate-400 hover:text-white transition-colors text-sm font-medium flex items-center space-x-2 focus-visible:ring-2 focus-visible:ring-purple-500 rounded px-1"
+              >
                 <Flag className="w-4 h-4" />
                 <span>Skip this question</span>
               </button>

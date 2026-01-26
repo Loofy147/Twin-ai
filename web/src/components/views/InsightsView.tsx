@@ -209,6 +209,40 @@ export const InsightsView: React.FC = () => {
           <StatsCard icon={Target} label="Twin Accuracy" value="91%" change="Excellent" color="green" />
         </div>
 
+        {/* ORACLE: Holistic Alignment Section - Multi-identity synthesis */}
+        <div className="bg-gradient-to-br from-indigo-900/40 to-purple-900/40 backdrop-blur-xl border border-indigo-500/30 rounded-2xl p-8 mb-12 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <Activity className="w-64 h-64 text-white" />
+          </div>
+          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="max-w-xl">
+              <h3 className="text-3xl font-black text-white mb-4">Holistic Alignment</h3>
+              <p className="text-indigo-200 text-lg mb-6">
+                Your Digital Twin's coherence across all identities. A synthesis of performance, value, security, and strategic depth.
+              </p>
+              <div className="flex flex-wrap gap-4">
+                <div className="px-4 py-2 bg-white/10 rounded-full border border-white/10 text-white text-sm">
+                  BOLT: {Math.round((holisticAlignment?.breakdown?.stabilityScore || 0) * 100)}%
+                </div>
+                <div className="px-4 py-2 bg-white/10 rounded-full border border-white/10 text-white text-sm">
+                  SENTINEL: {Math.round((holisticAlignment?.breakdown?.privacyShieldScore || 0) * 100)}%
+                </div>
+                <div className="px-4 py-2 bg-white/10 rounded-full border border-white/10 text-white text-sm">
+                  SUN TZU: {Math.round((holisticAlignment?.breakdown?.coherenceStrategic || 0) * 100)}%
+                </div>
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-indigo-300 mb-2">
+                {Math.round((holisticAlignment?.score || 0.75) * 100)}%
+              </div>
+              <div className="text-indigo-300 font-bold tracking-widest uppercase">
+                {holisticAlignment?.interpretation || 'EVOLVING'}
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
             <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-lg border border-slate-700/50 rounded-2xl p-8">

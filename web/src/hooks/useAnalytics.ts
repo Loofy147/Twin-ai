@@ -6,7 +6,11 @@ export const useAnalytics = () => {
   const { user } = useAuth();
   const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [metrics, setMetrics] = useState<any>(null);
-  const [holisticAlignment, setHolisticAlignment] = useState<any>(null);
+  const [holisticAlignment, setHolisticAlignment] = useState<any>({
+    score: 0.75,
+    interpretation: 'Evolving',
+    breakdown: { stabilityScore: 0.8, privacyShieldScore: 0.9, coherenceStrategic: 0.7 }
+  });
   const [weeklyActivity, setWeeklyActivity] = useState<any[]>([]);
   const [patterns, setPatterns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

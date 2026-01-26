@@ -81,7 +81,9 @@ const IntegrationCard = memo(({ integration, status, onConnect, onSync, isSyncin
         <button
           onClick={handleConnectClick}
           disabled={isSyncing}
-          className={`flex-1 py-3 rounded-xl font-bold transition-all ${
+          // PALETTE: Clear button label for connection status - WCAG 4.1.2 (A)
+          aria-label={status.connected ? `Disconnect from ${integration.name}` : `Connect to ${integration.name}`}
+          className={`flex-1 py-3 rounded-xl font-bold transition-all focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 ${
             status.connected
               ? 'bg-red-500/20 border-2 border-red-500/30 text-red-300 hover:bg-red-500/30'
               : `bg-gradient-to-r ${colors.gradient} text-white hover:shadow-lg`

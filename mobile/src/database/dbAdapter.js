@@ -135,7 +135,7 @@ class DatabaseWrapper {
     this.retryDelay = 100; // ms
   }
 
-  async executeWithRetry(operation, operationName) {
+  executeWithRetry(operation, operationName) {
     let lastError;
 
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
@@ -156,7 +156,8 @@ class DatabaseWrapper {
 
         if (attempt < this.maxRetries) {
           console.warn(`[DB] Retry ${attempt}/${this.maxRetries} for ${operationName}:`, error.message);
-          await this.delay(this.retryDelay * attempt);
+          // BOLT: For better-sqlite3 (synchronous), we skip the async delay to maintain
+          // transaction integrity.
         }
       }
     }

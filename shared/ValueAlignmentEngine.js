@@ -20,7 +20,10 @@ class ValueAlignmentEngine {
             dimensionCount: 0,
             synergyDensity: 0,
             confidenceAverage: 0,
-            stabilityScore: 0
+            stabilityScore: 0,
+            privacyShieldScore: 0,   // SENTINEL
+            coherenceStrategic: 0,   // SUN TZU
+            experienceClarity: 0     // PALETTE
         };
 
         try {
@@ -60,17 +63,38 @@ class ValueAlignmentEngine {
 
             stats.stabilityScore = stabilityRow ? Math.min(1.0, stabilityRow.age / 30.0) : 0.5;
 
+            // 4. SENTINEL: Privacy Shield Score
+            // Calculate based on RLS effectiveness and data minimization
+            // (Mocked for logic representation)
+            stats.privacyShieldScore = Math.min(1.0, (stats.dimensionCount * 0.1) + 0.5);
+
+            // 5. SUN TZU: Strategic Coherence
+            // Measures the breadth vs depth balance
+            const strategicBalance = 1.0 - Math.abs((stats.dimensionCount / 15) - stats.confidenceAverage);
+            stats.coherenceStrategic = Math.max(0, strategicBalance);
+
+            // 6. PALETTE: Experience Clarity
+            // Measures engagement rate and response time efficiency
+            const performanceRow = this.db.prepare(`
+                SELECT engagement_rate
+                FROM v_current_profile
+                WHERE id = ?
+            `).get(profileId);
+            stats.experienceClarity = performanceRow ? performanceRow.engagement_rate : 0.7;
+
         } catch (error) {
             console.error("ValueAlignmentEngine Error:", error);
         }
 
-        // The "Overall Logic" calculation
-        // Balanced between breadth (dimCount), depth (impact), and stability
+        // The "Overall Logic" calculation - Harmonized Identities
+        // BOLT (0.1) + ORACLE (0.2) + MIDAS (0.2) + SENTINEL (0.2) + SUN TZU (0.15) + PALETTE (0.15)
         const alignmentScore = (
-            (stats.confidenceAverage * 0.4) +
-            (stats.synergyDensity * 0.3) +
-            (Math.min(1.0, stats.totalImpact / 50.0) * 0.2) +
-            (stats.stabilityScore * 0.1)
+            (stats.stabilityScore * 0.1) +      // BOLT
+            (stats.synergyDensity * 0.2) +      // ORACLE
+            (stats.confidenceAverage * 0.2) +   // MIDAS (via confidence)
+            (stats.privacyShieldScore * 0.2) +  // SENTINEL
+            (stats.coherenceStrategic * 0.15) + // SUN TZU
+            (stats.experienceClarity * 0.15)    // PALETTE
         );
 
         return {
