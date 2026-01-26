@@ -32,6 +32,14 @@
 **Learning:** Using `setInterval` for high-frequency UI updates (like counters) continues to run even when the tab is backgrounded and doesn't sync with the display's refresh rate, causing unnecessary CPU usage and battery drain. `requestAnimationFrame` automatically throttles to the screen's refresh rate and pauses when the tab is inactive.
 **Action:** Prefer `requestAnimationFrame` over `setInterval` for any continuous UI animations or high-frequency updates. Ensure a fallback or immediate final state is available for accessibility (Palette protocol).
 
+## 2026-01-26 - [View-Based Code Splitting]
+**Learning:** Statically importing all major view components at the root levels (like `App.tsx`) forces the browser to download the entire application logic before the first paint, even if the user only visits the Home page. For apps with complex analytical views, this bloats the initial chunk size significantly.
+**Action:** Use `React.lazy` with dynamic imports for route-level components. Wrap the view renderer in `<Suspense>` to provide a consistent loading state while chunks are fetched. This reduces the initial bundle size and improves Time to Interactive (TTI).
+
+## 2026-01-26 - [Localized State for High-Frequency Input]
+**Learning:** Storing state for peripheral UI elements (like a footer newsletter form) in a root-level component (like `App.tsx`) causes the entire application tree to re-render on every keystroke. This is especially impactful in complex apps where the main view contains data-heavy components (Analytics, Knowledge Graphs).
+**Action:** Extract peripheral forms into dedicated, memoized components with localized state. This ensures that typing only triggers a re-render of the small form component, keeping the rest of the application idle.
+
 ## 2026-01-25 - [SQLite UPSERT with Multi-Tenancy]
 **Learning:** Implementing `INSERT ... ON CONFLICT` for multi-tenant tables requires the conflict target (e.g., `profile_id, entity_id, attribute_type`) to have a matching UNIQUE index or constraint. Without it, SQLite cannot resolve the conflict, and the query will fail even if the columns exist.
 **Action:** When adding `profile_id` to existing tables for isolation, always update the unique constraints to include the `profile_id` to support safe UPSERT operations.
