@@ -9,16 +9,20 @@ async function runAudit() {
     console.log("Starting Holistic Identity Audit...");
     initDb();
 
-    // Seed Dimensions and Aspects
-    const generator = new QuestionBankGenerator();
-    await generator.populateBank(db);
-
     const profileId = 1;
-    // Clear patterns for audit
+    // Clear all for audit
     db.prepare("DELETE FROM response_contexts").run();
     db.prepare("DELETE FROM responses").run();
     db.prepare("DELETE FROM patterns").run();
+    db.prepare("DELETE FROM answer_options").run();
+    db.prepare("DELETE FROM questions").run();
+    db.prepare("DELETE FROM aspects").run();
+    db.prepare("DELETE FROM dimensions").run();
     db.prepare("INSERT OR IGNORE INTO profile (id) VALUES (?)").run(profileId);
+
+    // Seed Dimensions and Aspects
+    const generator = new QuestionBankGenerator();
+    await generator.populateBank(db);
 
     const detector = new PatternDetector();
     const engine = new ValueAlignmentEngine(db);

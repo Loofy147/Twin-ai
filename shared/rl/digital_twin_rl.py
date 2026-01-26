@@ -73,7 +73,8 @@ class PersonalLifeEnv(gym.Env):
         # Actions: [action_type, target_id, duration, intensity/depth]
         self.action_types = [
             'rest', 'work_on_project', 'deep_work',
-            'call_person', 'exercise', 'learn', 'do_nothing'
+            'call_person', 'exercise', 'learn', 'do_nothing',
+            'strategic_decision', 'economic_action', 'political_action', 'cultural_action'
         ]
 
         self.action_space = spaces.MultiDiscrete([
@@ -204,7 +205,12 @@ class PersonalLifeEnv(gym.Env):
         self.state['hour'] += duration / 60
 
         # BOLT OPTIMIZATION: Return deltas for efficient reward calculation
-        deltas = {'project_idx': -1, 'project_delta': 0, 'rel_idx': -1, 'rel_delta': 0}
+        deltas = {'project_idx': -1, 'project_delta': 0, 'rel_idx': -1, 'rel_delta': 0, 'impact_delta': 0}
+
+        # SENTINEL: Privacy Constraint - High intensity actions on sensitive data increase risk
+        if intensity > 3 and action_type in ['call_person', 'economic_action']:
+             if 'privacy_sensitivity_high' in self.pattern_cache:
+                 self.state['energy'] -= 0.1 # Penalty for privacy risk management
 
         if action_type == 'work_on_project' and self.state['projects']:
             idx = target_idx % len(self.state['projects'])
@@ -237,6 +243,17 @@ class PersonalLifeEnv(gym.Env):
 
             deltas['rel_idx'] = idx
             deltas['rel_delta'] = strength_delta
+
+        elif action_type == 'strategic_decision':
+            # SUN TZU: Long-term impact focus, high energy cost
+            self.state['energy'] -= 0.2
+            self.state['cognitive_load'] += 0.3
+            deltas['impact_delta'] = 0.5 * (intensity / 5)
+
+        elif action_type == 'economic_action':
+            # Economics & Trade: Market/Credit/Bank interaction
+            self.state['energy'] -= 0.1
+            deltas['impact_delta'] = 0.2 * (intensity / 5)
 
         # Clip values
         self.state['energy'] = np.clip(self.state['energy'], 0, 1)
@@ -279,12 +296,17 @@ class PersonalLifeEnv(gym.Env):
                     # Bonus for progress on important things
                     reward += delta * proj['priority'] * (1 + urgency)
 
+        # MIDAS: Add bonus for impact-generating actions (Strategic/Economic)
+        if action_deltas.get('impact_delta', 0) > 0:
+            reward += action_deltas['impact_delta'] * 2.0
+
         return reward
 
     def _prime_pattern_cache(self):
         """Fetch all patterns for the user once."""
         try:
             cursor = self.db.cursor()
+            # BOLT: Fetch dimension-linked patterns
             cursor.execute("""
                 SELECT a.code, p.strength, p.confidence
                 FROM patterns p
@@ -293,6 +315,15 @@ class PersonalLifeEnv(gym.Env):
             """, (self.user_data['profile_id'],))
             for code, strength, confidence in cursor.fetchall():
                 self.pattern_cache[code] = (strength, confidence)
+
+            # SENTINEL: Fetch general patterns (like privacy sensitivity)
+            cursor.execute("""
+                SELECT pattern_type, strength, confidence
+                FROM patterns
+                WHERE profile_id = ? AND dimension_id IS NULL AND aspect_id IS NULL
+            """, (self.user_data['profile_id'],))
+            for ptype, strength, confidence in cursor.fetchall():
+                self.pattern_cache[ptype] = (strength, confidence)
         except Exception:
             pass
 
@@ -309,7 +340,11 @@ class PersonalLifeEnv(gym.Env):
             'rest': 'HEA_SLEEP',
             'exercise': 'HEA_PHYSICAL_ACTIVITY',
             'learn': 'LEA_PRACTICAL',
-            'do_nothing': 'VAL_FREEDOM'
+            'do_nothing': 'VAL_FREEDOM',
+            'strategic_decision': 'POW_REVOLUTION',
+            'economic_action': 'ECO_MARKET',
+            'political_action': 'POW_DEMOCRACY',
+            'cultural_action': 'CUL_LANGUAGE'
         }
 
         aspect_code = action_mapping.get(action_type)
@@ -329,7 +364,11 @@ class PersonalLifeEnv(gym.Env):
             'rest': 0.4,
             'exercise': 0.6,
             'learn': 0.8,
-            'do_nothing': 0.0
+            'do_nothing': 0.0,
+            'strategic_decision': 0.9,
+            'economic_action': 0.6,
+            'political_action': 0.5,
+            'cultural_action': 0.4
         }
         return value_scores.get(action_type, 0.0)
 

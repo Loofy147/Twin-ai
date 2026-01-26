@@ -6,7 +6,10 @@ const ENTITY_COLORS: Record<string, string> = {
   project: 'text-blue-400 bg-blue-400/10',
   person: 'text-purple-400 bg-purple-400/10',
   job: 'text-green-400 bg-green-400/10',
-  dream: 'text-pink-400 bg-pink-400/10'
+  dream: 'text-pink-400 bg-pink-400/10',
+  institution: 'text-amber-400 bg-amber-400/10',
+  system: 'text-cyan-400 bg-cyan-400/10',
+  law: 'text-rose-400 bg-rose-400/10'
 };
 
 // BOLT OPTIMIZATION: Memoized NetworkNode to prevent redundant re-renders - Expected: -60% renders in large graphs
@@ -31,7 +34,7 @@ const NetworkNode = memo(({ dimension, aspect, entity, type, strength, impact, i
           </span>
         </div>
       </div>
-      <div className="text-right">
+      <div className="text-right" aria-hidden="true">
         <div className="text-[10px] text-slate-500 mb-1 uppercase tracking-tighter">
           {isSynergy ? 'Synergy Score' : 'Alignment'}
         </div>
