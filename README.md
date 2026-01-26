@@ -1,48 +1,50 @@
-# Twin-ai: Your Personal Digital Twin
+# Twin-AI: The Living Digital Twin
 
-Twin-ai is an AI system that learns YOU through your behavior and responses. Unlike traditional assistants that ask you to explain yourself, Twin-ai uses your actual data to ask targeted questions, building a comprehensive digital twin over time.
+Twin-AI is a multi-dimensional, perspective-dependent thought structure that evolves into a faithful digital reflection of its user. It is not just a collection of features; it is a **living twin** harmonized by the **Meta-Identity Framework**.
 
-## Key Features
+## 🌐 The Living Vision
 
-*   **Real-World Integration**: Connects with Contacts, Calendar, Drive, and Call Logs to ground questions in your actual life.
-*   **Adaptive Learning**: An engine that evolves with you, selecting questions based on dimension coverage and pattern confidence.
-*   **5,000+ Question Bank**: A massive taxonomy of questions covering 15 dimensions of life, from Work Style to Spirituality.
-*   **Privacy-First**: Multi-tenant isolation with Supabase Row Level Security (RLS) and local SQLite storage.
-*   **Resilient Infrastructure**: Built-in circuit breakers and exponential backoff for 100% uptime during sync.
-*   **No Chat Required**: Learns through simple multiple-choice questions (10-20 per day, 2-5 minutes).
+Unlike traditional AI assistants, Twin-AI doesn't just process commands—it observes, inquires, and synthesizes. Through the collaboration of specialized engineering personas (Bolt, Midas, Oracle, Palette, Sentinel, Sun-tzu, and Tuber), the twin builds a holistic "Values Overall Logic" that tracks your growth across every life dimension.
 
-## Documentation
+## 🎭 Unified Engineering Identities
 
-Explore our detailed documentation in the `docs/` directory:
+*   ⚡ **Bolt**: Ultra-fast RL loops and 60fps UI transitions.
+*   💰 **Midas**: Quantifies the real-world value of every insight.
+*   🔮 **Oracle**: Predicts and shapes the twin's long-term evolution.
+*   🎨 **Palette**: Translates abstract data into the beautiful "Value Graphic".
+*   🛡️ **Sentinel**: Ensures privacy-first, multi-tenant data isolation.
+*   🎯 **Sun-tzu**: Strategic question selection and holistic alignment.
+*   🔧 **Tuber**: Solid database bedrock with perfect schema integrity.
 
-*   [**Architecture**](./docs/ARCHITECTURE.md): System design and data flow.
-*   [**Database Schema**](./docs/DATABASE_SCHEMA.md): SQLite table definitions and relations.
-*   [**Algorithms**](./docs/ALGORITHMS.md): Adaptive selection and pattern detection logic.
-*   [**Integrations**](./docs/INTEGRATIONS.md): Mobile and Web integration strategies.
-*   [**Setup & Development**](./docs/SETUP.md): How to install, seed, and test the system.
-*   [**Deployment Guide**](./docs/DEPLOYMENT.md): How to deploy to cloud environments.
-*   [**Pre-Launch Report**](./docs/PRE_LAUNCH_REPORT.md): Security and implementation status.
-*   [**Launch Checklist**](./docs/LAUNCH_CHECKLIST.md): Steps to production.
+## 🚀 Core Pillars
 
-## Getting Started
+*   **Value Alignment Engine**: Calculates a holistic "Alignment Score" based on breadth, depth, and synergy of your profile.
+*   **Synergy Detection**: Identifies cross-dimension correlations (e.g., how your *Work Style* impacts your *Relationships*).
+*   **Profile-Isolated RL**: Trains a functional digital twin in a secure simulation, validated by your actual behavior.
+*   **Holistic Analytics**: A unified dashboard providing 360-degree visibility into your evolving digital persona.
+*   **Privacy-First Architecture**: Hardened multi-tenancy using Row Level Security (RLS) and encrypted local storage.
 
-1.  Clone the repository.
-2.  Install dependencies:
+## 📚 Documentation
+
+Dive into the living thought structure in the `docs/` directory:
+
+*   [**Architecture**](./docs/ARCHITECTURE.md): The Meta-Identity Framework and system design.
+*   [**Algorithms**](./docs/ALGORITHMS.md): Holistic Alignment, O(N) Synergy, and O(1) RL Reward logic.
+*   [**Database Schema**](./docs/DATABASE_SCHEMA.md): Multi-tenant bedrock and Knowledge Graph views.
+*   [**RL System**](./docs/RL_SYSTEM.md): Simulation environments and user-driven validation.
+*   [**Setup & Development**](./docs/SETUP.md): Bootstrapping the twin on your local machine.
+
+## ⚡ Getting Started
+
+1.  **Clone & Install**:
     ```bash
     cd mobile && pnpm install
     cd ../web && pnpm install
     ```
-3.  **Local Setup**:
-    *   Run the seeding script: `node shared/generateInitialBank.js`.
-    *   Run the integration test: `node tests/integration_test.js`.
-4.  **Cloud Setup (Supabase)**:
-    *   Configure `web/.env` with your Supabase credentials.
-    *   Push migrations: `npx supabase db push` (requires Supabase CLI).
-    *   Seed the cloud database: `node web/scripts/seedSupabase.js`.
+2.  **Initialize the Bedrock**:
+    *   Run the schema setup: `node shared/generateInitialBank.js`.
+3.  **Synthesize the Twin**:
+    *   Run the value demonstration: `node scripts/demonstrate_values.js`.
 
-## The Result
-After 500+ responses, you'll have a digital twin that knows:
-*   What you actually value (vs. what you say you value).
-*   How you make decisions in real situations.
-*   Who matters to you and why.
-*   Your true patterns across all life dimensions.
+## 🔮 The Result
+A digital twin that doesn't just know your data, but understands your **logic**. A perspective-dependent, temporally dynamic reflection of your true self.

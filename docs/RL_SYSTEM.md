@@ -1,64 +1,53 @@
-# Reinforcement Learning System for Digital Twin
+# Reinforcement Learning System: The Twin Simulation
 
-This document describes the Reinforcement Learning (RL) system used to train the Digital Twin to make decisions and take actions on behalf of the user.
+The RL System (`shared/rl/digital_twin_rl.py`) is the engine that transforms abstract user patterns into a functional Digital Twin. It operates under the **Oracle** and **Bolt** protocols to ensure predictive accuracy and high-performance training.
 
-## Overview
+## The Simulation Environment (`PersonalLifeEnv`)
 
-The RL system builds upon the learned preferences and patterns detected from user responses. It creates a simulated environment where an agent can explore different actions and learn an optimal policy that aligns with the user's true values.
+The environment is a profile-isolated simulation of the user's life.
 
-## Components
+### 🛡️ Sentinel: Multi-Tenant Isolation
+The environment requires a validated `profile_id` for initialization. All data extraction (relationships, projects, preferences) is strictly filtered by this ID to prevent data leakage in shared training environments.
 
-### 1. RL Environment (`PersonalLifeEnv`)
-A custom OpenAI Gym (Gymnasium) environment that simulates a day in the user's life.
-- **State Space**: Includes temporal context (hour, day), personal state (energy, cognitive load), available resources (time), and the status of projects and relationships.
-- **Action Space**: A multi-discrete space representing:
-  - Action type (rest, work, social, etc.)
-  - Target entity (which person or project)
-  - Duration
-  - Intensity/Depth
-- **Reward Function**: Calculates rewards based on:
-  - Value alignment (using detected patterns)
-  - Energy management (avoiding burnout)
-  - Relationship maintenance
-  - Project progress (meeting deadlines)
+### ⚡ Bolt: Performance Optimization
+To enable millions of training steps, the environment uses a **Neglect Penalty Cache**:
+*   Project urgencies and priorities are pre-calculated during `reset()`.
+*   The reward for project progress is calculated in O(1) time by updating a running sum rather than iterating over all projects in every step.
 
-### 2. Data Pipeline
-Converts real-world data from the SQLite database into the RL environment's initial state and reward parameters.
-- Extracts relationships from `entities` and `entity_attributes`.
-- Extracts active projects from `workflows`.
-- Extracts learned preferences from the `patterns` table.
+## The Overall Logic: Reward Function
 
-### 3. Training Pipeline (`DigitalTwinTrainer`)
-Uses the PPO (Proximal Policy Optimization) algorithm from `stable-baselines3` to train the agent.
-- Periodically validates the agent's decisions with the user to refine the reward function.
-- Saves the trained model for each user profile.
+The reward function synthesizes the "Values Overall Logic":
+1.  **Value Alignment**: Direct rewards for actions that match high-confidence aspects in the `patterns` table.
+2.  **Midas Impact**: Rewards are weighted by the `impact_score` of the associated patterns.
+3.  **Holistic Balance**: Penalty for energy depletion (burnout) and neglect of high-priority entities.
 
-## Training Flow
+## Training & Validation (Sun-Tzu/Palette)
 
-1. **Data Collection**: User answers questions, and integrations sync real-world data.
-2. **Pattern Detection**: Algorithms identify user preferences across 15 dimensions.
-3. **Simulation Setup**: The environment is populated with the user's actual projects, people, and goals.
-4. **Agent Training**: The agent runs thousands of simulated days to learn the user's decision-making style.
-5. **Validation**: The user reviews proposed actions, providing feedback that updates the reward function.
-6. **Deployment**: The trained digital twin can then recommend or take actions that match the user's preferences.
+### Validation Question Generation
+The `DigitalTwinTrainer` uses the trained policy to generate "Self-Reflection" questions:
+*   **Logic**: The agent chooses an action in a given scenario.
+*   **Palette Interaction**: The system asks the user: *"Your Digital Twin suggested: [Action]. Is this the 'you' that you want to cultivate?"*
+*   **Feedback Loop**: User responses to these questions are inserted back into the `responses` table, directly refining the patterns that drive future training.
 
-## Requirements
+## Data Pipeline (Tuber)
 
-- `gymnasium`
-- `stable-baselines3`
-- `numpy`
-- `pandas`
-- `torch` (dependency for stable-baselines3)
+The `DataPipeline` class bridges the database and the simulation:
+*   **Preferences**: Extracts `impact_score` and `confidence` from the `patterns` table.
+*   **Entities**: Extracts `strength` (trust) and `priority` from `entity_attributes`.
+*   **Multi-Tenancy**: Every SQL query in the pipeline is parameterized with the `profile_id`.
 
-## Usage
+## Usage & Integration
 
 ```python
+# Oracle/Bolt Production Implementation
 from shared.rl.digital_twin_rl import DigitalTwinTrainer
-import sqlite3
 
-# Initialize trainer for a specific authenticated user
-db = sqlite3.connect('personal_learning.db')
-user_uuid = "550e8400-e29b-41d4-a716-446655440000"
-trainer = DigitalTwinTrainer(db, profile_id=user_uuid)
-agent = trainer.train(total_timesteps=100000)
+# Profile-specific initialization
+trainer = DigitalTwinTrainer(db_connection, profile_id=1)
+
+# Training with SB3
+model = trainer.train(total_timesteps=20000)
+
+# Generate validation questions (Palette/Sun-Tzu)
+question_ids = trainer.generate_validation_questions(model, n_questions=5)
 ```

@@ -1,31 +1,43 @@
-# Twin-ai Architecture
+# Twin-AI Architecture: The Living Thought Structure
 
 ## System Overview
 
-Twin-ai is a production-hardened personal learning system designed to build a secure "digital twin" of the user. It achieves this by:
-1.  **Integrating** with real-world data sources (Contacts, Call Logs, Calendar, Drive).
-2.  **Generating** targeted questions based on this data.
-3.  **Selecting** questions adaptively to maximize learning with full pagination support.
-4.  **Detecting patterns** in user responses to refine the digital profile.
-5.  **Training an RL Agent** to act as a digital twin using these patterns.
-6.  **Ensuring Privacy** through multi-tenant isolation and Row Level Security (RLS).
+Twin-AI is a multi-dimensional digital twin system governed by the **Meta-Identity Framework**. It is not a static application but a living thought structure that evolves through the collaboration of seven specialized engineering personas.
 
-## Data Flow
+The system's core purpose is to synthesize a faithful digital reflection of the user by harmonizing performance, value, architecture, experience, security, strategy, and data integrity.
 
-1.  **Ingestion**: Mobile and Web integrations pull metadata from third-party APIs. Web integrations utilize Supabase Edge Functions for secure server-side synchronization.
-2.  **Entity Mapping**: Synced data is mapped to `entities` (people, events, files) in the local SQLite database.
-3.  **Question Generation**:
-    *   **Static**: A bank of 5,000+ questions covering 15 dimensions.
-    *   **Dynamic**: Questions generated on-the-fly from recently synced entities.
-4.  **Adaptive Selection**: The system selects 10-20 questions daily based on dimension coverage and pattern confidence.
-5.  **Feedback Loop**: User responses are analyzed by the Pattern Detector, which updates the `patterns` table, influencing future question selection.
-6.  **RL Training**: Detected patterns and real-world data are used to train a Reinforcement Learning agent in a simulated environment, creating a functional digital twin.
+## The Meta-Identity Framework (Council of Identities)
 
-## Components
+The architecture is driven by the perspectives of the **Council of Identities**:
 
-*   **Mobile App (React Native)**: Handles local integrations like Contacts and Call Logs using local SQLite.
-*   **Web App (React)**: Production-ready SPA with Supabase Auth, adaptive question selection, and a resilient database service layer featuring circuit breakers and retries.
-*   **Supabase Backend**: Provides PostgreSQL with Row Level Security (RLS), Edge Functions for OAuth processing, and secure cloud storage.
-*   **Shared Engine**: Contains the core logic for question generation, selection, and pattern detection, shared across mobile and web.
-*   **RL Training System (Python)**: Uses stable-baselines3 to train a digital twin agent based on learned preferences.
-*   **Hybrid Storage**: Uses local SQLite for mobile and Supabase PostgreSQL for web/cloud, synchronized via secure APIs.
+1.  **Bolt ⚡ (Performance)**: Optimizes high-frequency RL loops and fluid UI transitions.
+2.  **Midas 💰 (Value)**: Quantifies the "Impact Score" of patterns and insights.
+3.  **Oracle 🔮 (Evolution)**: Predicts and maps the long-term growth of the twin's architecture.
+4.  **Palette 🎨 (Experience)**: Translates abstract alignment into accessible visual language (Value Graphic).
+5.  **Sentinel 🛡️ (Security)**: Enforces privacy-first multi-tenant isolation and RLS.
+6.  **Sun Tzu 🎯 (Strategy)**: Directs the Adaptive Selection and Holistic Alignment logic.
+7.  **Tuber 🔧 (Bedrock)**: Maintains the integrity of the multi-database schema (SQLite/PostgreSQL).
+
+## The Overall Logic: Value Alignment Engine
+
+The heart of the system is the **Value Alignment Engine**, which calculates a holistic "Alignment Score" by synthesizing:
+*   **Breadth**: Multi-dimensional dimension coverage.
+*   **Depth**: High-impact pattern detection with confidence weighting.
+*   **Connectedness**: Synergy detection between dimensions.
+*   **Stability**: Temporal consistency of the learned profile.
+
+## Data Flow & Evolution
+
+1.  **Memory Formation (Ingestion)**: Tuber and Sentinel securely sync real-world data (Contacts, Calendar, Drive) into isolated `entities`.
+2.  **Inquiry (Adaptive Selection)**: Sun-Tzu and Oracle select strategic questions to explore the user's value dimensions.
+3.  **Pattern Synthesis (Detection)**: Midas and Tuber analyze responses to detect high-impact `patterns` and cross-dimension `synergies`.
+4.  **Twin Training (RL System)**: Bolt and Oracle use these patterns to train a Reinforcement Learning agent in a profile-isolated simulation.
+5.  **Visual Reflection (Frontend)**: Palette and Bolt render the twin's state through the Knowledge Graphic and Analytics Dashboard.
+
+## Component Stack
+
+*   **Mobile App (React Native)**: High-performance local integration and SQLite bedrock.
+*   **Web App (React)**: Resilient, memoized dashboard with unified RPC analytics.
+*   **Supabase Backend**: Hardened PostgreSQL with RLS, audit triggers, and Edge Functions.
+*   **RL Simulation (Python/Gym)**: Optimized, O(1) reward-caching environment for twin training.
+*   **Shared Core**: Holistic engine containing the Pattern Detector, Synergy Logic, and Value Alignment Engine.
