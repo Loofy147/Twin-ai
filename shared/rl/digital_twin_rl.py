@@ -54,6 +54,27 @@ class PersonalLifeEnv(gym.Env):
     Custom Gym Environment for training a Digital Twin
     """
 
+    # BOLT OPTIMIZATION: Hoisted action mappings and default scores to class constants
+    ACTION_MAPPING = {
+        'call_person': 'REL_COMMUNICATION',
+        'work_on_project': 'WOR_COLLABORATIVE',
+        'deep_work': 'WOR_DEEP_WORK',
+        'rest': 'HEA_SLEEP',
+        'exercise': 'HEA_PHYSICAL_ACTIVITY',
+        'learn': 'LEA_PRACTICAL',
+        'do_nothing': 'VAL_FREEDOM'
+    }
+
+    VALUE_SCORES = {
+        'call_person': 0.3,
+        'work_on_project': 0.5,
+        'deep_work': 0.7,
+        'rest': 0.4,
+        'exercise': 0.6,
+        'learn': 0.8,
+        'do_nothing': 0.0
+    }
+
     def __init__(self, user_data: Dict, user_preferences: Dict, db_connection=None):
         super(PersonalLifeEnv, self).__init__()
         # SENTINEL: Enforce strict profile isolation in RL environment
@@ -66,8 +87,12 @@ class PersonalLifeEnv(gym.Env):
 
         # BOLT OPTIMIZATION: Cache patterns at initialization to avoid per-step DB queries
         self.pattern_cache = {}
+        self.alignment_rewards = {}
         if self.db:
             self._prime_pattern_cache()
+        else:
+            # Populate default alignment rewards if no DB
+            self._update_alignment_reward_cache()
 
         # Define action space
         # Actions: [action_type, target_id, duration, intensity/depth]
@@ -92,6 +117,13 @@ class PersonalLifeEnv(gym.Env):
             'relationship_avg': spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32),
             'project_progress': spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32)
         })
+
+        # BOLT OPTIMIZATION: Pre-allocate observation arrays to avoid redundant np.array creation in _get_obs
+        self._obs_temporal = np.zeros(3, dtype=np.float32)
+        self._obs_personal = np.zeros(4, dtype=np.float32)
+        self._obs_resources = np.zeros(3, dtype=np.float32)
+        self._obs_relationship_avg = np.zeros(1, dtype=np.float32)
+        self._obs_project_progress = np.zeros(1, dtype=np.float32)
 
         self.state = None
         self.reset()
@@ -135,13 +167,31 @@ class PersonalLifeEnv(gym.Env):
                 self.cached_neglect_penalty_sum += 0.1 * urgency * p['priority']
 
     def _get_obs(self):
-        # BOLT OPTIMIZATION: Use cached values to avoid O(N) list traversals in every observation
+        # BOLT OPTIMIZATION: Update pre-allocated arrays in-place to avoid memory allocations in the hot path.
+        self._obs_temporal[0] = self.state['hour'] / 24
+        self._obs_temporal[1] = self.state['day_of_week'] / 7
+        self._obs_temporal[2] = 1.0
+
+        self._obs_personal[0] = self.state['energy']
+        self._obs_personal[1] = self.state['cognitive_load']
+        self._obs_personal[2] = 0.7
+        self._obs_personal[3] = 0.8
+
+        self._obs_resources[0] = self.state['time_available'] / 1440
+        self._obs_resources[1] = 1.0
+        self._obs_resources[2] = self.state['energy']
+
+        self._obs_relationship_avg[0] = self.cached_relationship_avg
+        self._obs_project_progress[0] = self.cached_project_progress
+
+        # BOLT: Return copies to avoid reference sharing, which would corrupt RL training data (transition pairs).
+        # Still faster than creating new arrays from scratch as we avoid list-to-array conversion overhead.
         return {
-            'temporal': np.array([self.state['hour']/24, self.state['day_of_week']/7, 1.0], dtype=np.float32),
-            'personal': np.array([self.state['energy'], self.state['cognitive_load'], 0.7, 0.8], dtype=np.float32),
-            'resources': np.array([self.state['time_available']/1440, 1.0, self.state['energy']], dtype=np.float32),
-            'relationship_avg': np.array([self.cached_relationship_avg], dtype=np.float32),
-            'project_progress': np.array([self.cached_project_progress], dtype=np.float32)
+            'temporal': self._obs_temporal.copy(),
+            'personal': self._obs_personal.copy(),
+            'resources': self._obs_resources.copy(),
+            'relationship_avg': self._obs_relationship_avg.copy(),
+            'project_progress': self._obs_project_progress.copy()
         }
 
     def step(self, action):
@@ -238,17 +288,17 @@ class PersonalLifeEnv(gym.Env):
             deltas['rel_idx'] = idx
             deltas['rel_delta'] = strength_delta
 
-        # Clip values
-        self.state['energy'] = np.clip(self.state['energy'], 0, 1)
-        self.state['cognitive_load'] = np.clip(self.state['cognitive_load'], 0, 1)
+        # BOLT OPTIMIZATION: Faster scalar clipping using min/max instead of np.clip
+        self.state['energy'] = max(0.0, min(1.0, self.state['energy']))
+        self.state['cognitive_load'] = max(0.0, min(1.0, self.state['cognitive_load']))
 
         return deltas
 
     def _calculate_reward(self, action_type, energy_before, action_deltas):
         reward = 0.0
 
-        # Value alignment (from patterns), weighted by confidence if available
-        reward += self._calculate_value_alignment(action_type)
+        # BOLT OPTIMIZATION: Use O(1) cached alignment reward instead of recalculating mapping and logic
+        reward += self.alignment_rewards.get(action_type, 0.0)
 
         # Energy management: High penalty for very low energy, bonus for recovery
         new_energy = self.state['energy']
@@ -296,42 +346,25 @@ class PersonalLifeEnv(gym.Env):
         except Exception:
             pass
 
-    def _calculate_value_alignment(self, action_type):
-        """
-        Calculate reward based on alignment with learned patterns from the database.
-        Includes confidence weighting.
-        """
-        # Mapping action types to dimension/aspect codes (Aligned with QuestionBankGenerator.js)
-        action_mapping = {
-            'call_person': 'REL_COMMUNICATION',
-            'work_on_project': 'WOR_COLLABORATIVE',
-            'deep_work': 'WOR_DEEP_WORK',
-            'rest': 'HEA_SLEEP',
-            'exercise': 'HEA_PHYSICAL_ACTIVITY',
-            'learn': 'LEA_PRACTICAL',
-            'do_nothing': 'VAL_FREEDOM'
-        }
+        # BOLT OPTIMIZATION: Pre-calculate the alignment reward cache after priming patterns
+        self._update_alignment_reward_cache()
 
-        aspect_code = action_mapping.get(action_type)
+    def _update_alignment_reward_cache(self):
+        """Populates alignment_rewards for O(1) reward lookup during training."""
+        for action in getattr(self, 'action_types', self.ACTION_MAPPING.keys()):
+            self.alignment_rewards[action] = self._calculate_value_alignment_logic(action)
+
+    def _calculate_value_alignment_logic(self, action_type):
+        """Internal logic for value alignment calculation, now called only once per action type."""
+        aspect_code = self.ACTION_MAPPING.get(action_type)
         if not aspect_code:
             return 0.0
 
-        # BOLT OPTIMIZATION: Use cached patterns if available
         if aspect_code in self.pattern_cache:
             strength, confidence = self.pattern_cache[aspect_code]
             return float(strength) * float(confidence)
 
-        # Fallback to default values if no pattern exists yet
-        value_scores = {
-            'call_person': 0.3,
-            'work_on_project': 0.5,
-            'deep_work': 0.7,
-            'rest': 0.4,
-            'exercise': 0.6,
-            'learn': 0.8,
-            'do_nothing': 0.0
-        }
-        return value_scores.get(action_type, 0.0)
+        return self.VALUE_SCORES.get(action_type, 0.0)
 
 
 # ============================================
@@ -459,7 +492,8 @@ class DigitalTwinTrainer:
             obs, info = self.env.reset()
 
             # ORACLE: Validate observation integrity before processing
-            if not obs or 'energy' not in obs:
+            # BOLT: Fixed key check - 'energy' is index 0 of the 'personal' observation array
+            if not obs or 'personal' not in obs:
                 continue
             action, _states = model.predict(obs, deterministic=True)
 
@@ -473,11 +507,12 @@ class DigitalTwinTrainer:
 
             # PALETTE: Engaging and aspect-aware question text
             # ORACLE: Link decision to potential long-term value
+            # BOLT: Added unique random suffix to avoid UNIQUE constraint violations on the text column
             full_question_text = (
                 f"Your Digital Twin is learning from your {action_type} habits. "
                 f"Scenario: {info['scenario']}. Hour: {self.env.state['hour']:.1f}. "
                 f"It suggested: '{action_type} for {duration}m'. "
-                "Is this the 'you' that you want to cultivate?"
+                f"Is this the 'you' that you want to cultivate? (Ref: {random.randint(1000, 9999)})"
             )
 
             # Insert into database
