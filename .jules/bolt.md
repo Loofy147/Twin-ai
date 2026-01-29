@@ -52,3 +52,7 @@
 ## 2026-01-26 - [Route-Level Code Splitting]
 **Learning:** In single-page applications, importing all major views (Home, Analytics, Questions, etc.) synchronously in the root component creates a massive entry bundle that must be fully downloaded and parsed before any view is visible. Using `React.lazy` and `Suspense` allows for splitting these into smaller chunks, improving the "Time to Interactive" (TTI) for the initial route.
 **Action:** Implement route-level code splitting for all distinct functional views. Extract common UI components (like `LoadingScreen`) to prevent duplication and ensure a consistent experience during chunk loading. Use named-export-to-default mapping for components that don't use default exports.
+
+## 2026-01-26 - [Composite Indexes for Ordered Scans]
+**Learning:** Postgres queries using `ORDER BY` on non-indexed columns require a full table scan and a memory/disk sort. For the question selection engine, adding a composite index on `(active, engagement_factor DESC)` allows the database to perform an index scan, delivering results in sorted order instantly. Furthermore, composite indexes on `(question_id, profile_id)` enable index-only scans for `NOT EXISTS` checks, avoiding heap fetches entirely.
+**Action:** Always verify if high-frequency queries with sorting or existence checks are backed by composite indexes that cover all filter and sort criteria.
