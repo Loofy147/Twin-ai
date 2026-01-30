@@ -2,42 +2,60 @@ import { useState, useEffect, useCallback } from 'react';
 import { databaseService } from '../services/database.service';
 import { useAuth } from '../contexts/AuthContext';
 
+interface AnalyticsState {
+  analyticsData: any;
+  metrics: any;
+  holisticAlignment: any;
+  weeklyActivity: any[];
+  patterns: any[];
+  loading: boolean;
+  error: string | null;
+}
+
 export const useAnalytics = () => {
   const { user } = useAuth();
-  const [analyticsData, setAnalyticsData] = useState<any>(null);
-  const [metrics, setMetrics] = useState<any>(null);
-  const [holisticAlignment, setHolisticAlignment] = useState<any>(null);
-  const [weeklyActivity, setWeeklyActivity] = useState<any[]>([]);
-  const [patterns, setPatterns] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  // BOLT OPTIMIZATION: Consolidated multiple state variables into a single object.
+  // This reduces re-renders from 5-6 down to 1 when fetching finishes.
+  const [state, setState] = useState<AnalyticsState>({
+    analyticsData: null,
+    metrics: null,
+    holisticAlignment: null,
+    weeklyActivity: [],
+    patterns: [],
+    loading: true,
+    error: null
+  });
 
   const loadData = useCallback(async () => {
     if (!user) {
-      setLoading(false);
+      setState(prev => ({ ...prev, loading: false }));
       return;
     }
 
     try {
-      setLoading(true);
+      setState(prev => ({ ...prev, loading: true, error: null }));
+
       // BOLT OPTIMIZATION: Reduced API calls to a single unified RPC for all dashboard data.
-      // This includes metrics, dimension breakdown, weekly activity, and detected patterns.
       const analyticsResponse = await databaseService.getAnalytics(user.id);
 
-      if (analyticsResponse) {
-        // BOLT: Store the whole response to allow access to knowledge_graph and dimension_breakdown
-        setAnalyticsData(analyticsResponse);
-        setMetrics(analyticsResponse.metrics);
-        setHolisticAlignment(analyticsResponse.holistic_alignment);
-        setPatterns(analyticsResponse.patterns || []);
-        setWeeklyActivity(analyticsResponse.weekly_activity || []);
-      }
-
-      setError(null);
+      // BOLT: Atomic state update for all related analytics data.
+      // Ensure loading is set to false even if response is falsy to avoid hanging UI.
+      setState({
+        analyticsData: analyticsResponse,
+        metrics: analyticsResponse?.metrics || null,
+        holisticAlignment: analyticsResponse?.holistic_alignment || null,
+        patterns: analyticsResponse?.patterns || [],
+        weeklyActivity: analyticsResponse?.weekly_activity || [],
+        loading: false,
+        error: null
+      });
     } catch (err: any) {
-      setError(err.message || 'Failed to load analytics');
-    } finally {
-      setLoading(false);
+      setState(prev => ({
+        ...prev,
+        error: err.message || 'Failed to load analytics',
+        loading: false
+      }));
     }
   }, [user]);
 
@@ -45,5 +63,5 @@ export const useAnalytics = () => {
     loadData();
   }, [loadData]);
 
-  return { analyticsData, weeklyActivity, patterns, metrics, holisticAlignment, loading, error, reloadData: loadData };
+  return { ...state, reloadData: loadData };
 };

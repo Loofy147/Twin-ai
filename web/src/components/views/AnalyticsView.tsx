@@ -29,6 +29,9 @@ const BREAKDOWN_COLOR_MAP: Record<string, string> = {
   blue: 'from-blue-500 to-cyan-500'
 };
 
+// BOLT OPTIMIZATION: Hoisted colors to avoid redundant allocations in useMemo
+const DIMENSION_COLORS = ['purple', 'pink', 'cyan', 'green', 'blue'];
+
 // BOLT OPTIMIZATION: Memoized components to prevent unnecessary re-renders when parent state (like 'timeframe') changes
 const MetricCard = memo(({ icon: Icon, label, value, trend, color }: any) => {
   return (
@@ -192,18 +195,22 @@ const DimensionBreakdownItem = memo(({ dimension }: any) => {
   );
 });
 
-export const AnalyticsView: React.FC = () => {
+// BOLT OPTIMIZATION: Memoized AnalyticsView to avoid re-renders when parent state changes.
+// Removed React.FC annotation to avoid potential build errors with memo.
+export const AnalyticsView = memo(() => {
   // BOLT OPTIMIZATION: Now using real-time aggregated data from the comprehensive analytics RPC
   const { analyticsData, weeklyActivity, metrics, loading } = useAnalytics();
   const [timeframe, setTimeframe] = useState('week');
 
   const dimensionBreakdown = useMemo(() => {
-    if (!analyticsData || analyticsData.length === 0) return [];
+    // BOLT: Fix bug where analyticsData (object) was treated as array.
+    // Correctly access dimension_breakdown property from the unified RPC response.
+    const breakdown = analyticsData?.dimension_breakdown || [];
+    if (breakdown.length === 0) return [];
 
-    const colors = ['purple', 'pink', 'cyan', 'green', 'blue'];
-    return analyticsData.map((d: any, i: number) => ({
+    return breakdown.map((d: any, i: number) => ({
       ...d,
-      color: colors[i % colors.length]
+      color: DIMENSION_COLORS[i % DIMENSION_COLORS.length]
     }));
   }, [analyticsData]);
 
@@ -353,4 +360,4 @@ export const AnalyticsView: React.FC = () => {
       </div>
     </div>
   );
-};
+});
