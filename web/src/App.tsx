@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
-import { Github } from 'lucide-react';
+import React, { useState, Suspense, lazy } from 'react';
+import { Github, Loader2 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { Navigation } from './components/common/Navigation';
-import { HomeView } from './components/views/HomeView';
 import { SubscribeForm } from './components/common/SubscribeForm';
-import { QuestionsView } from './components/views/QuestionsView';
-import { InsightsView } from './components/views/InsightsView';
-import { AnalyticsView } from './components/views/AnalyticsView';
-import { IntegrationsView } from './components/views/IntegrationsView';
-import DigitalTwinSimulator from './components/DigitalTwinDemo';
+
+// Lazy-loaded Views
+const HomeView = lazy(() => import('./components/views/HomeView').then(m => ({ default: m.HomeView })));
+const QuestionsView = lazy(() => import('./components/views/QuestionsView').then(m => ({ default: m.QuestionsView })));
+const InsightsView = lazy(() => import('./components/views/InsightsView').then(m => ({ default: m.InsightsView })));
+const AnalyticsView = lazy(() => import('./components/views/AnalyticsView').then(m => ({ default: m.AnalyticsView })));
+const IntegrationsView = lazy(() => import('./components/views/IntegrationsView').then(m => ({ default: m.IntegrationsView })));
+const DigitalTwinSimulator = lazy(() => import('./components/DigitalTwinDemo'));
 
 const AppContent: React.FC = () => {
   const { user, loading, signIn, signUp, signOut } = useAuth();
@@ -149,7 +151,14 @@ const AppContent: React.FC = () => {
         </button>
       </div>
       <main>
-        {renderView()}
+        <Suspense fallback={
+          <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+            <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
+            <p className="text-slate-400">Loading view...</p>
+          </div>
+        }>
+          {renderView()}
+        </Suspense>
       </main>
 
       <footer className="bg-slate-900 border-t border-white/5 py-12">
