@@ -51,3 +51,12 @@
 ## 2026-01-25 - [Meta-Identity Synergy Optimization]
 **Learning:** Operating from a single identity (e.g., only Bolt) can lead to myopic optimizations that compromise security (Sentinel) or architecture (Oracle). By utilizing the Meta-Identity Framework, we can identify "Multi-Objective" optimizations. For example, the 'Alignment Engine' provides both a performance win (single RPC) and a strategic win (user value metric).
 **Action:** Use the Meta-Identity Council to peer-review architectural changes before implementation to ensure all project dimensions are balanced.
+
+## 2026-01-26 - [RL Observation & Reward Optimization]
+**ROI:** ~65% reduction in step time (from 37µs to 13µs).
+**Learning:** In high-frequency loops like RL 'step' functions, creating new dictionaries and numpy arrays on every call is a major bottleneck. Pre-allocating observation arrays and using O(1) reward caches (populated at initialization or on infrequent reset events) significantly boosts throughput.
+**Action:** Pre-allocate mutable numpy arrays for observations and return '.copy()' to satisfy the contract while avoiding list-to-array overhead. Hoist all mapping logic and static scores to class constants to avoid redundant allocations.
+
+## 2026-01-29 - [Route-level Code Splitting for Bundle Optimization]
+**Learning:** For single-page applications with distinct views, bundling all components together increases the initial load time significantly as the application grows. Route-level code splitting using `React.lazy` and `React.Suspense` allows the browser to download only the necessary code for the active route, improving Time to Interactive (TTI).
+**Action:** Implement code splitting for major feature views that are not part of the initial landing experience. Use a stable fallback UI (like a centered spinner with defined height) to minimize Layout Shift (CLS) during view transitions.

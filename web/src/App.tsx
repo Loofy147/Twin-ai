@@ -1,17 +1,17 @@
-import React, { useState, Suspense } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { Github, Loader2 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { Navigation } from './components/common/Navigation';
 import { SubscribeForm } from './components/common/SubscribeForm';
 
-// BOLT: Use code-splitting to reduce initial bundle size - Expected: -40% main chunk
-const HomeView = React.lazy(() => import('./components/views/HomeView').then(m => ({ default: m.HomeView })));
-const QuestionsView = React.lazy(() => import('./components/views/QuestionsView').then(m => ({ default: m.QuestionsView })));
-const InsightsView = React.lazy(() => import('./components/views/InsightsView').then(m => ({ default: m.InsightsView })));
-const AnalyticsView = React.lazy(() => import('./components/views/AnalyticsView').then(m => ({ default: m.AnalyticsView })));
-const IntegrationsView = React.lazy(() => import('./components/views/IntegrationsView').then(m => ({ default: m.IntegrationsView })));
-const DigitalTwinSimulator = React.lazy(() => import('./components/DigitalTwinDemo'));
+// Lazy-loaded Views
+const HomeView = lazy(() => import('./components/views/HomeView').then(m => ({ default: m.HomeView })));
+const QuestionsView = lazy(() => import('./components/views/QuestionsView').then(m => ({ default: m.QuestionsView })));
+const InsightsView = lazy(() => import('./components/views/InsightsView').then(m => ({ default: m.InsightsView })));
+const AnalyticsView = lazy(() => import('./components/views/AnalyticsView').then(m => ({ default: m.AnalyticsView })));
+const IntegrationsView = lazy(() => import('./components/views/IntegrationsView').then(m => ({ default: m.IntegrationsView })));
+const DigitalTwinSimulator = lazy(() => import('./components/DigitalTwinDemo'));
 
 const AppContent: React.FC = () => {
   const { user, loading, signIn, signUp, signOut } = useAuth();
@@ -152,8 +152,9 @@ const AppContent: React.FC = () => {
       </div>
       <main>
         <Suspense fallback={
-          <div className="min-h-[60vh] flex items-center justify-center">
-            <Loader2 className="w-12 h-12 text-purple-500 animate-spin" />
+          <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+            <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
+            <p className="text-slate-400">Loading view...</p>
           </div>
         }>
           {renderView()}
