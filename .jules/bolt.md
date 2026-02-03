@@ -64,3 +64,7 @@
 ## 2026-01-29 - [React Hook State Consolidation]
 **Learning:** Sequential updates to multiple `useState` variables within a single event (like an API response) trigger multiple re-renders of the component and all its children. Consolidating these into a single state object ensures that the update is atomic and triggers only one re-render cycle.
 **Action:** Use a single `state` object for highly-correlated data in custom hooks instead of multiple `useState` calls. This is especially impactful for data-heavy views like Analytics where multiple charts and metrics depend on the same fetch result.
+
+## 2026-01-30 - [Memoizing Root Context Values]
+**Learning:** Passing a fresh object literal to a root-level context provider (e.g., 'AuthContext.tsx') triggers a re-render of the entire application tree on every provider update, regardless of whether the underlying state values changed. While React 18's automatic batching reduces the impact of multiple state updates, it does not prevent the cascading re-render caused by an unstable object reference in a Context Provider.
+**Action:** Always wrap Context Provider value objects in 'useMemo'. This is the most critical performance optimization for large React applications to ensure that state changes in the root only affect the specific components that consume those values.
