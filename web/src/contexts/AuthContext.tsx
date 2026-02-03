@@ -169,20 +169,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
   }, []);
 
+  // BOLT OPTIMIZATION: Memoized context value to prevent unnecessary re-renders of all consumers.
+  // Without this, every time any state (user, loading, error, csrfToken) changes,
+  // every component using useAuth() would re-render because the value object is a new reference.
+  const authValue = React.useMemo(() => ({
+    user,
+    loading,
+    error,
+    signUp,
+    signIn,
+    signOut,
+    resetPassword,
+    clearError,
+    csrfToken
+  }), [user, loading, error, signUp, signIn, signOut, resetPassword, clearError, csrfToken]);
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        error,
-        signUp,
-        signIn,
-        signOut,
-        resetPassword,
-        clearError,
-        csrfToken
-      }}
-    >
+    <AuthContext.Provider value={authValue}>
       {children}
     </AuthContext.Provider>
   );
