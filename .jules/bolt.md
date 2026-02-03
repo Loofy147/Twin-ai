@@ -68,3 +68,7 @@
 ## 2026-01-30 - [Memoizing Root Context Values]
 **Learning:** Passing a fresh object literal to a root-level context provider (e.g., 'AuthContext.tsx') triggers a re-render of the entire application tree on every provider update, regardless of whether the underlying state values changed. While React 18's automatic batching reduces the impact of multiple state updates, it does not prevent the cascading re-render caused by an unstable object reference in a Context Provider.
 **Action:** Always wrap Context Provider value objects in 'useMemo'. This is the most critical performance optimization for large React applications to ensure that state changes in the root only affect the specific components that consume those values.
+
+## 2026-01-30 - [Parallelizing Integration Fetches]
+**Learning:** Sequential 'await' calls in a loop for independent tasks (like fetching from multiple integrations) creates a bottleneck where total time = sum(individual times). Switching to 'Promise.all' allows concurrent execution, reducing total time to max(individual times).
+**Action:** Use 'Promise.all' for independent async operations, especially when they involve network I/O or multiple external integrations.
