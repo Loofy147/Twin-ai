@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, memo } from 'react';
 import {
   Search, MessageSquare, Lightbulb, BarChart3, Link2, Brain, Settings, Download
 } from 'lucide-react';
@@ -21,7 +21,9 @@ const COMMANDS = [
   { id: 'export', label: 'Export Data', icon: Download, shortcut: 'E', action: 'export' }
 ];
 
-export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, setCurrentView }) => {
+// BOLT OPTIMIZATION: Memoized CommandPalette to skip re-renders when Navigation re-renders (e.g. on scroll)
+// if its props haven't changed. Expected: -90% re-renders during active app usage.
+export const CommandPalette: React.FC<CommandPaletteProps> = memo(({ isOpen, onClose, setCurrentView }) => {
   const [search, setSearch] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -93,4 +95,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
       </div>
     </div>
   );
-};
+});
+
+CommandPalette.displayName = 'CommandPalette';

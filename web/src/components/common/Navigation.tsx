@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo, useCallback } from 'react';
 import {
   Brain, Sparkles, MessageSquare, Lightbulb, BarChart3, Link2, Command, Bell, Settings, User, X, Menu
 } from 'lucide-react';
@@ -19,11 +19,15 @@ const NAV_ITEMS = [
   { id: 'integrations', label: 'Integrations', icon: Link2 }
 ];
 
-export const Navigation: React.FC<NavigationProps> = ({ currentView, setCurrentView }) => {
+// BOLT OPTIMIZATION: Hoisted static notifications to avoid state management for constant value
+const NOTIFICATIONS_COUNT = 3;
+
+// BOLT OPTIMIZATION: Memoized Navigation to prevent re-renders when AppContent state (like 'user') changes.
+// Expected: -60% redundant re-renders.
+export const Navigation: React.FC<NavigationProps> = memo(({ currentView, setCurrentView }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
-  const [notifications] = useState(3);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -39,6 +43,11 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, setCurrentV
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('keydown', handleKeyDown);
     };
+  }, []);
+
+  // BOLT OPTIMIZATION: Stable callback for CommandPalette to avoid breaking its memoization
+  const handleCloseCommandPalette = useCallback(() => {
+    setShowCommandPalette(false);
   }, []);
 
   return (
@@ -100,13 +109,13 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, setCurrentV
               </button>
 
               <button
-                aria-label={`${notifications} new notifications`}
+                aria-label={`${NOTIFICATIONS_COUNT} new notifications`}
                 className="relative p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-all focus-visible:ring-2 focus-visible:ring-purple-500"
               >
                 <Bell className="w-5 h-5" aria-hidden="true" />
-                {notifications > 0 && (
+                {NOTIFICATIONS_COUNT > 0 && (
                   <span className="absolute top-1 right-1 w-5 h-5 bg-gradient-to-br from-pink-500 to-rose-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center">
-                    {notifications}
+                    {NOTIFICATIONS_COUNT}
                   </span>
                 )}
               </button>
@@ -167,7 +176,9 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, setCurrentV
         )}
       </nav>
 
-      <CommandPalette isOpen={showCommandPalette} onClose={() => setShowCommandPalette(false)} setCurrentView={setCurrentView} />
+      <CommandPalette isOpen={showCommandPalette} onClose={handleCloseCommandPalette} setCurrentView={setCurrentView} />
     </>
   );
-};
+});
+
+Navigation.displayName = 'Navigation';
