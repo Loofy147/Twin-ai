@@ -1,4 +1,4 @@
-import React, { useState, Suspense, lazy } from 'react';
+import React, { useState, Suspense, lazy, useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
@@ -18,7 +18,10 @@ const AppContent: React.FC = () => {
   const { user, loading, signOut } = useAuth();
   const [currentView, setCurrentView] = useState('home');
 
-  const renderView = () => {
+  // BOLT OPTIMIZATION: Memoized view element to prevent unnecessary diffing of the entire view tree
+  // when AppContent re-renders for reasons other than view changes (e.g. auth status updates).
+  // Expected: Faster response to auth state changes and reduced main-thread work.
+  const viewElement = useMemo(() => {
     switch(currentView) {
       case 'home': return <HomeView setCurrentView={setCurrentView} />;
       case 'questions': return <QuestionsView />;
@@ -28,7 +31,7 @@ const AppContent: React.FC = () => {
       case 'twin': return <DigitalTwinSimulator />;
       default: return <HomeView setCurrentView={setCurrentView} />;
     }
-  };
+  }, [currentView, setCurrentView]);
 
   if (loading) {
     return (
@@ -68,7 +71,7 @@ const AppContent: React.FC = () => {
             <p className="text-slate-400">Loading view...</p>
           </div>
         }>
-          {renderView()}
+          {viewElement}
         </Suspense>
       </main>
 
