@@ -6,26 +6,27 @@ class DynamicQuestionGenerator {
     }
 
     async generateAll(db) {
-        let total = 0;
+        const tasks = [];
+
         for (const integration of this.integrations) {
             if (integration.generateQuestionsFromContacts) {
-                const qs = await integration.generateQuestionsFromContacts(db);
-                total += qs.length;
+                tasks.push(integration.generateQuestionsFromContacts(db));
             }
             if (integration.generateQuestionsFromCallHistory) {
-                const qs = await integration.generateQuestionsFromCallHistory(db);
-                total += qs.length;
+                tasks.push(integration.generateQuestionsFromCallHistory(db));
             }
             if (integration.generateQuestionsFromCalendar) {
-                const qs = await integration.generateQuestionsFromCalendar(db);
-                total += qs.length;
+                tasks.push(integration.generateQuestionsFromCalendar(db));
             }
             if (integration.generateQuestionsFromDrive) {
-                const qs = await integration.generateQuestionsFromDrive(db);
-                total += qs.length;
+                tasks.push(integration.generateQuestionsFromDrive(db));
             }
         }
-        return total;
+
+        // ⚡ Bolt: Run all generation tasks in parallel to minimize total latency.
+        // This is especially effective if integrations perform network I/O.
+        const results = await Promise.all(tasks);
+        return results.reduce((sum, qs) => sum + (qs?.length || 0), 0);
     }
 }
 
