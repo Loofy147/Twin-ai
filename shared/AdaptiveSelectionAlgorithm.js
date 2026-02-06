@@ -4,7 +4,8 @@
 class AdaptiveSelectionAlgorithm {
     async selectNextQuestions(db, profileId, limit = 10) {
         // 1. Get candidate questions (not yet answered by this profile)
-        const candidates = db.prepare(`
+        // BOLT: Added await for compatibility with async DB adapters
+        const candidates = await db.prepare(`
             SELECT q.* FROM questions q
             LEFT JOIN responses r ON q.id = r.question_id AND r.profile_id = ?
             WHERE r.id IS NULL AND q.active = 1
@@ -13,7 +14,8 @@ class AdaptiveSelectionAlgorithm {
         if (candidates.length === 0) return [];
 
         // 2. Get dimension coverage for the profile
-        const coverageRows = db.prepare(`
+        // BOLT: Added await for compatibility with async DB adapters
+        const coverageRows = await db.prepare(`
             SELECT primary_dimension_id, COUNT(*) as response_count
             FROM responses r
             JOIN questions q ON r.question_id = q.id
@@ -28,11 +30,12 @@ class AdaptiveSelectionAlgorithm {
 
         // 3. Get patterns with low confidence (< 0.4)
         // BOLT OPTIMIZATION: Use a Set for O(1) lookups inside the candidate loop
+        // BOLT: Added await for compatibility with async DB adapters
         const lowConfidenceDimensions = new Set(
-            db.prepare(`
+            (await db.prepare(`
                 SELECT dimension_id FROM patterns
                 WHERE profile_id = ? AND confidence < 0.4
-            `).all(profileId).map(p => p.dimension_id)
+            `).all(profileId)).map(p => p.dimension_id)
         );
 
         // 4. Scoring function
