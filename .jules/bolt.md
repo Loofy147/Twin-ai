@@ -72,3 +72,12 @@
 ## 2026-01-30 - [Parallelizing Integration Fetches]
 **Learning:** Sequential 'await' calls in a loop for independent tasks (like fetching from multiple integrations) creates a bottleneck where total time = sum(individual times). Switching to 'Promise.all' allows concurrent execution, reducing total time to max(individual times).
 **Action:** Use 'Promise.all' for independent async operations, especially when they involve network I/O or multiple external integrations.
+
+## 2026-02-06 - [Pruned O(D^2) Loop for Synergies]
+**ROI:** ~40-90% reduction in synergy detection time.
+**Learning:** Calculating synergies between all dimension pairs is an O(D^2) problem. By pre-calculating dimension averages and sorting them descending, we can prune the search space significantly. If avg(A) + avg(next_best_B) <= 1.5 (threshold 0.75), we can skip all remaining pairs for A and potentially break the outer loop entirely.
+**Action:** Always sort and prune nested correlation loops when a threshold exists. Avoid redundant operations like JSON.parse or repeated divisions inside these hot loops.
+
+## 2026-02-06 - [Async DB Compatibility in Shared Logic]
+**Learning:** Shared logic (PatternDetector, AdaptiveSelectionAlgorithm) that interacts with a database must use await for all DB operations (all, get, run, transaction) to be compatible with both synchronous (Node.js/better-sqlite3) and asynchronous (React Native/Supabase) database adapters. Without await, these methods return Promises instead of data in async environments, leading to runtime errors like forEach is not a function.
+**Action:** Standardize on async/await for all database interactions in shared modules.

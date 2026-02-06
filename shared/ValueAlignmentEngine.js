@@ -25,7 +25,8 @@ class ValueAlignmentEngine {
 
         try {
             // 1. MIDAS: Total Value Impact
-            const impactRow = this.db.prepare(`
+            // BOLT: Added await for compatibility with async DB adapters
+            const impactRow = await this.db.prepare(`
                 SELECT SUM(impact_score) as total_impact, AVG(confidence) as avg_conf, COUNT(DISTINCT dimension_id) as dim_count
                 FROM patterns
                 WHERE profile_id = ? AND confidence > 0.3
@@ -38,7 +39,8 @@ class ValueAlignmentEngine {
             }
 
             // 2. ORACLE: Synergy Density (Connectedness of the twin)
-            const synergyRow = this.db.prepare(`
+            // BOLT: Added await for compatibility with async DB adapters
+            const synergyRow = await this.db.prepare(`
                 SELECT COUNT(*) as synergy_count
                 FROM patterns
                 WHERE profile_id = ? AND pattern_type LIKE 'synergy_%'
@@ -52,7 +54,8 @@ class ValueAlignmentEngine {
 
             // 3. BOLT: Stability Score (Temporal consistency)
             // Uses last_updated to see if patterns are oscillating or settling
-            const stabilityRow = this.db.prepare(`
+            // BOLT: Added await for compatibility with async DB adapters
+            const stabilityRow = await this.db.prepare(`
                 SELECT AVG(julianday('now') - julianday(last_updated)) as age
                 FROM patterns
                 WHERE profile_id = ?
