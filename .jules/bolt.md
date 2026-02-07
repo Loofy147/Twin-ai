@@ -81,3 +81,7 @@
 ## 2026-02-06 - [Async DB Compatibility in Shared Logic]
 **Learning:** Shared logic (PatternDetector, AdaptiveSelectionAlgorithm) that interacts with a database must use await for all DB operations (all, get, run, transaction) to be compatible with both synchronous (Node.js/better-sqlite3) and asynchronous (React Native/Supabase) database adapters. Without await, these methods return Promises instead of data in async environments, leading to runtime errors like forEach is not a function.
 **Action:** Standardize on async/await for all database interactions in shared modules.
+
+## 2026-02-07 - [Database Query Consolidation in ValueAlignmentEngine]
+**Learning:** Performing multiple aggregate queries on the same table within a single logical operation (like calculating holistic alignment) introduces unnecessary roundtrip latency and redundant table scans. Modern SQL (including SQLite) supports conditional aggregation using CASE WHEN inside aggregate functions, allowing multiple filtered metrics to be retrieved in a single scan.
+**Action:** When an operation requires multiple metrics from the same table with different filters, consolidate them into a single SELECT statement using CASE WHEN and aggregate functions.

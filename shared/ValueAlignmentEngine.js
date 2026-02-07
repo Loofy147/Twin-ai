@@ -24,44 +24,37 @@ class ValueAlignmentEngine {
         };
 
         try {
-            // 1. MIDAS: Total Value Impact
-            // BOLT: Added await for compatibility with async DB adapters
-            const impactRow = await this.db.prepare(`
-                SELECT SUM(impact_score) as total_impact, AVG(confidence) as avg_conf, COUNT(DISTINCT dimension_id) as dim_count
-                FROM patterns
-                WHERE profile_id = ? AND confidence > 0.3
-            `).get(profileId);
-
-            if (impactRow) {
-                stats.totalImpact = impactRow.total_impact || 0;
-                stats.confidenceAverage = impactRow.avg_conf || 0;
-                stats.dimensionCount = impactRow.dim_count || 0;
-            }
-
-            // 2. ORACLE: Synergy Density (Connectedness of the twin)
-            // BOLT: Added await for compatibility with async DB adapters
-            const synergyRow = await this.db.prepare(`
-                SELECT COUNT(*) as synergy_count
-                FROM patterns
-                WHERE profile_id = ? AND pattern_type LIKE 'synergy_%'
-            `).get(profileId);
-
-            if (synergyRow && stats.dimensionCount > 1) {
-                // Density = actual synergies / potential synergies
-                const potential = (stats.dimensionCount * (stats.dimensionCount - 1)) / 2;
-                stats.synergyDensity = potential > 0 ? synergyRow.synergy_count / potential : 0;
-            }
-
-            // 3. BOLT: Stability Score (Temporal consistency)
-            // Uses last_updated to see if patterns are oscillating or settling
-            // BOLT: Added await for compatibility with async DB adapters
-            const stabilityRow = await this.db.prepare(`
-                SELECT AVG(julianday('now') - julianday(last_updated)) as age
+            /**
+             * BOLT OPTIMIZATION: Consolidated 3 database queries into a single aggregate scan.
+             * 1. MIDAS: Total Value Impact & Confidence (filtered by threshold)
+             * 2. ORACLE: Synergy Count (for density calculation)
+             * 3. BOLT: Average Age (for stability score)
+             * Reducing roundtrips improves performance especially in high-latency or concurrent environments.
+             */
+            const aggregatedRow = await this.db.prepare(`
+                SELECT
+                    SUM(CASE WHEN confidence > 0.3 THEN impact_score ELSE 0 END) as total_impact,
+                    AVG(CASE WHEN confidence > 0.3 THEN confidence END) as avg_conf,
+                    COUNT(DISTINCT CASE WHEN confidence > 0.3 THEN dimension_id END) as dim_count,
+                    COUNT(CASE WHEN pattern_type LIKE 'synergy_%' THEN 1 END) as synergy_count,
+                    AVG(julianday('now') - julianday(last_updated)) as age
                 FROM patterns
                 WHERE profile_id = ?
             `).get(profileId);
 
-            stats.stabilityScore = stabilityRow ? Math.min(1.0, stabilityRow.age / 30.0) : 0.5;
+            if (aggregatedRow) {
+                stats.totalImpact = aggregatedRow.total_impact || 0;
+                stats.confidenceAverage = aggregatedRow.avg_conf || 0;
+                stats.dimensionCount = aggregatedRow.dim_count || 0;
+
+                if (stats.dimensionCount > 1) {
+                    const synergyCount = aggregatedRow.synergy_count || 0;
+                    const potential = (stats.dimensionCount * (stats.dimensionCount - 1)) / 2;
+                    stats.synergyDensity = potential > 0 ? synergyCount / potential : 0;
+                }
+
+                stats.stabilityScore = aggregatedRow.age !== null ? Math.min(1.0, aggregatedRow.age / 30.0) : 0.5;
+            }
 
         } catch (error) {
             console.error("ValueAlignmentEngine Error:", error);
