@@ -71,15 +71,17 @@ class PatternDetector {
      * Expected: Provides higher-order insights into value alignment.
      */
     async detectSynergies(db, profileId) {
-        // BOLT: Added await for compatibility with async DB adapters
-        const patterns = await db.prepare(`
-            SELECT dimension_id, aspect_id, confidence, strength
+        // BOLT OPTIMIZATION: Move aggregation and sorting to SQL to reduce JS overhead and data transfer.
+        // Complexity: O(N) in DB (indexed) instead of O(N) in JS + O(D log D) sort.
+        const dimList = await db.prepare(`
+            SELECT dimension_id as id, AVG(confidence) as avg
             FROM patterns
-            WHERE profile_id = ? AND confidence > 0.5
-              AND dimension_id IS NOT NULL
+            WHERE profile_id = ? AND confidence > 0.5 AND dimension_id IS NOT NULL
+            GROUP BY dimension_id
+            ORDER BY avg DESC
         `).all(profileId);
 
-        if (patterns.length < 2) return 0;
+        if (dimList.length < 2) return 0;
 
         const synergyInsert = db.prepare(`
             INSERT INTO patterns (profile_id, pattern_type, metadata, confidence, strength, impact_score, last_updated)
@@ -91,21 +93,6 @@ class PatternDetector {
                 impact_score = excluded.impact_score,
                 last_updated = CURRENT_TIMESTAMP
         `);
-
-        // BOLT: Use a frequency map for O(N) grouping
-        const dimStats = {};
-        for (const p of patterns) {
-            if (!dimStats[p.dimension_id]) dimStats[p.dimension_id] = { sum: 0, count: 0 };
-            dimStats[p.dimension_id].sum += p.confidence;
-            dimStats[p.dimension_id].count++;
-        }
-
-        // BOLT OPTIMIZATION: Pre-calculate averages and sort to allow early exit (pruning)
-        // Complexity: O(N) for averages + O(D log D) for sort, where D is unique dimensions.
-        const dimList = Object.keys(dimStats).map(id => ({
-            id,
-            avg: dimStats[id].sum / dimStats[id].count
-        })).sort((a, b) => b.avg - a.avg);
 
         const synergies = [];
         const n = dimList.length;
@@ -153,7 +140,8 @@ class PatternDetector {
                     synergyInsert.run(profileId, `synergy_${s.type}_${s.dim1}_${s.dim2}`, s.metadata, s.score, s.score, impact);
                 }
             });
-            runSynergies(synergies);
+            // BOLT: Added await for compatibility with async DB adapters
+            await runSynergies(synergies);
         }
 
         return synergies.length;
