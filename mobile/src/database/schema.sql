@@ -257,6 +257,11 @@ CREATE INDEX IF NOT EXISTS idx_recommendations_status ON recommendations(status)
 CREATE INDEX IF NOT EXISTS idx_entity_attrs_profile_type ON entity_attributes(profile_id, attribute_type);
 CREATE INDEX IF NOT EXISTS idx_workflows_profile_type_status ON workflows(profile_id, workflow_type, status);
 
+-- BOLT OPTIMIZATION: Composite indexes for the question selection engine
+CREATE INDEX IF NOT EXISTS idx_questions_active_engagement ON questions(active, engagement_factor DESC);
+CREATE INDEX IF NOT EXISTS idx_responses_question_profile ON responses(question_id, profile_id);
+CREATE INDEX IF NOT EXISTS idx_questions_profile_active_engagement ON questions(profile_id, active, engagement_factor DESC);
+
 -- BOLT OPTIMIZATION: Additional indexes for common joins and filtering
 CREATE INDEX IF NOT EXISTS idx_questions_dimension ON questions(primary_dimension_id);
 CREATE INDEX IF NOT EXISTS idx_answer_options_question ON answer_options(question_id);

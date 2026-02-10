@@ -85,3 +85,7 @@
 ## 2026-02-07 - [Database Query Consolidation in ValueAlignmentEngine]
 **Learning:** Performing multiple aggregate queries on the same table within a single logical operation (like calculating holistic alignment) introduces unnecessary roundtrip latency and redundant table scans. Modern SQL (including SQLite) supports conditional aggregation using CASE WHEN inside aggregate functions, allowing multiple filtered metrics to be retrieved in a single scan.
 **Action:** When an operation requires multiple metrics from the same table with different filters, consolidate them into a single SELECT statement using CASE WHEN and aggregate functions.
+
+## 2026-02-08 - [Bounded Candidate Selection for Adaptive Algorithms]
+**Learning:** Question selection algorithms that score the entire unanswered question bank in JavaScript suffer from O(N) complexity that degrades as the dataset grows. By moving initial filtering (active status) and ordering (engagement) to the database with a reasonable `LIMIT` (e.g., 500), the JS processing time is capped at O(1) relative to total bank size. The use of `NOT EXISTS` over `LEFT JOIN` for anti-joins further improves SQLite performance for large exclusion sets.
+**Action:** Always cap candidate sets fetched for JS-side scoring using SQL `LIMIT`. Ensure ordering uses indexed columns to avoid temporary sort tables.

@@ -4,11 +4,23 @@
 class AdaptiveSelectionAlgorithm {
     async selectNextQuestions(db, profileId, limit = 10) {
         // 1. Get candidate questions (not yet answered by this profile)
+        /**
+         * BOLT OPTIMIZATION:
+         * 1. Replaced LEFT JOIN with NOT EXISTS for faster exclusion in SQLite.
+         * 2. Added ORDER BY engagement_factor DESC and LIMIT 500.
+         * 3. Utilizing 'idx_questions_active_engagement' index for O(log N) lookup.
+         * Expected Impact: Reduces candidate scoring set from O(N_all) to O(1) (max 500).
+         * This significantly reduces JS heap overhead and processing time for large question banks.
+         */
         // BOLT: Added await for compatibility with async DB adapters
         const candidates = await db.prepare(`
             SELECT q.* FROM questions q
-            LEFT JOIN responses r ON q.id = r.question_id AND r.profile_id = ?
-            WHERE r.id IS NULL AND q.active = 1
+            WHERE q.active = 1 AND NOT EXISTS (
+                SELECT 1 FROM responses r
+                WHERE r.question_id = q.id AND r.profile_id = ?
+            )
+            ORDER BY q.engagement_factor DESC
+            LIMIT 500
         `).all(profileId);
 
         if (candidates.length === 0) return [];
