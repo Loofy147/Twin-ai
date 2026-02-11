@@ -263,6 +263,7 @@ CREATE INDEX IF NOT EXISTS idx_responses_question_profile ON responses(question_
 CREATE INDEX IF NOT EXISTS idx_questions_profile_active_engagement ON questions(profile_id, active, engagement_factor DESC);
 
 -- BOLT OPTIMIZATION: Additional indexes for common joins and filtering
+CREATE INDEX IF NOT EXISTS idx_responses_pattern_detection ON responses(profile_id, response_type, answer_option_id);
 CREATE INDEX IF NOT EXISTS idx_questions_dimension ON questions(primary_dimension_id);
 CREATE INDEX IF NOT EXISTS idx_answer_options_question ON answer_options(question_id);
 CREATE INDEX IF NOT EXISTS idx_answer_options_aspect ON answer_options(aspect_id);
