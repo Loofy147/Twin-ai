@@ -89,3 +89,7 @@
 ## 2026-02-08 - [Bounded Candidate Selection for Adaptive Algorithms]
 **Learning:** Question selection algorithms that score the entire unanswered question bank in JavaScript suffer from O(N) complexity that degrades as the dataset grows. By moving initial filtering (active status) and ordering (engagement) to the database with a reasonable `LIMIT` (e.g., 500), the JS processing time is capped at O(1) relative to total bank size. The use of `NOT EXISTS` over `LEFT JOIN` for anti-joins further improves SQLite performance for large exclusion sets.
 **Action:** Always cap candidate sets fetched for JS-side scoring using SQL `LIMIT`. Ensure ordering uses indexed columns to avoid temporary sort tables.
+
+## 2026-02-10 - [Covering Indexes for Joint Analysis]
+**Learning:** Joins between large history tables (like `responses`) and metadata tables (like `answer_options`) become major bottlenecks as user data grows. Even with single-column indexes, SQLite may still need to perform expensive table lookups. A composite "covering index" that includes all columns in the WHERE and JOIN clauses (e.g., `profile_id, response_type, answer_option_id`) allows the engine to satisfy the entire query from the index b-tree alone.
+**Action:** Use `EXPLAIN QUERY PLAN` to identify 'SEARCH' operations that can be upgraded to 'COVERING INDEX' scans for hot paths. Ensure index consistency between local SQLite and remote PostgreSQL schemas.
