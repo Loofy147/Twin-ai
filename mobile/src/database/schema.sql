@@ -244,6 +244,12 @@ CREATE INDEX IF NOT EXISTS idx_responses_profile ON responses(profile_id);
 CREATE INDEX IF NOT EXISTS idx_responses_question ON responses(question_id);
 CREATE INDEX IF NOT EXISTS idx_responses_created ON responses(created_at);
 CREATE INDEX IF NOT EXISTS idx_responses_session ON responses(session_id);
+
+-- BOLT OPTIMIZATION: High-impact covering index for PatternDetector.analyzeResponses
+-- Expected: Reduces response scan from O(N) to O(log N) for aspect analysis.
+CREATE INDEX IF NOT EXISTS idx_responses_pattern_detection
+ON responses(profile_id, response_type, answer_option_id);
+
 CREATE INDEX IF NOT EXISTS idx_patterns_profile ON patterns(profile_id);
 CREATE INDEX IF NOT EXISTS idx_patterns_dimension ON patterns(dimension_id);
 CREATE INDEX IF NOT EXISTS idx_patterns_aspect ON patterns(aspect_id);
