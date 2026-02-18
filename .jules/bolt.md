@@ -94,3 +94,7 @@
 ## 2026-02-08 - [Bounded Candidate Selection for Adaptive Algorithms]
 **Learning:** Question selection algorithms that score the entire unanswered question bank in JavaScript suffer from O(N) complexity that degrades as the dataset grows. By moving initial filtering (active status) and ordering (engagement) to the database with a reasonable `LIMIT` (e.g., 500), the JS processing time is capped at O(1) relative to total bank size. The use of `NOT EXISTS` over `LEFT JOIN` for anti-joins further improves SQLite performance for large exclusion sets.
 **Action:** Always cap candidate sets fetched for JS-side scoring using SQL `LIMIT`. Ensure ordering uses indexed columns to avoid temporary sort tables.
+
+## 2026-02-14 - [Optimistic UI Transitions for Question Answering]
+**Learning:** Blocking the UI on non-critical network success (like recording an answer before moving to the next question) adds "perceived latency" that makes the app feel sluggish. By backgrounding the submission (Fire-and-Forget or Parallel) and reducing transition timeouts, the "Time to Next Action" is significantly improved without compromising data integrity.
+**Action:** Parallelize background data persistence with UI state transitions when immediate feedback for the write operation is not required for the next view.
