@@ -94,3 +94,8 @@
 ## 2026-02-08 - [Bounded Candidate Selection for Adaptive Algorithms]
 **Learning:** Question selection algorithms that score the entire unanswered question bank in JavaScript suffer from O(N) complexity that degrades as the dataset grows. By moving initial filtering (active status) and ordering (engagement) to the database with a reasonable `LIMIT` (e.g., 500), the JS processing time is capped at O(1) relative to total bank size. The use of `NOT EXISTS` over `LEFT JOIN` for anti-joins further improves SQLite performance for large exclusion sets.
 **Action:** Always cap candidate sets fetched for JS-side scoring using SQL `LIMIT`. Ensure ordering uses indexed columns to avoid temporary sort tables.
+
+## 2026-02-15 - [Optimistic UI & Reduced Transition Delay]
+**Learning:** Artificial delays used for UX feedback (showing a "success" state) can significantly slow down the user's "flow" if too long. In `QuestionsView.tsx`, a 1200ms delay felt sluggish. Reducing it to 800ms maintains feedback clarity while increasing perceived speed. Furthermore, `await`-ing the database submission before starting the transition is unnecessary if the transition itself takes time; backgrounding the submission (Optimistic UI) removes the network latency from the critical path.
+**ROI:** ~33% faster transitions and elimination of network jitter in the question flow.
+**Action:** Use optimistic UI patterns for high-frequency actions where failure is unlikely or can be handled gracefully in the background. Balance artificial UX delays to be long enough for perception but short enough to maintain momentum.
